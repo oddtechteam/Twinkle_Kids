@@ -1,0 +1,19 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.ok {
+  background: color-mix(in srgb, var(--tk-success-600) 12%, white);
+  color: var(--tk-success-600);
+}
+
+.down {
+  background: color-mix(in srgb, var(--tk-danger-600) 10%, white);
+  color: var(--tk-danger-600);
+}

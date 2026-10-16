@@ -1,0 +1,35 @@
+.footer {
+  margin-top: auto;
+  padding-block: var(--space-7);
+  background: var(--tk-navy-900);
+  color: var(--tk-navy-100);
+}
+
+.footer a,
+.footer h2 {
+  color: var(--tk-ivory-50);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.brand {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--tk-gold-200);
+}
+
+.copy {
+  font-size: var(--text-sm);
+  opacity: 0.8;
+}

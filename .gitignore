@@ -1,0 +1,35 @@
+# ---- Secrets & local env (never commit) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# ---- Local databases ----
+*.db
+*.sqlite3
+
+# ---- Node / Next.js (frontend/.gitignore has the rest) ----
+node_modules/
+
+# ---- Editors & OS ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+.neon

@@ -1,0 +1,53 @@
+from collections.abc import Iterable, Sequence
+from typing import Protocol
+from uuid import UUID
+
+from app.domain.entities.media import ImageInfo, MediaAsset, MediaPurpose, StoredObject
+
+
+class ObjectStorage(Protocol):
+    """Port for a bucket/key object store. Implementations raise StorageUnavailableError."""
+
+    def put(
+        self, bucket: str, key: str, data: bytes, *, content_type: str, cache_control: str
+    ) -> None: ...
+
+    def get(self, bucket: str, key: str) -> StoredObject: ...
+
+    def exists(self, bucket: str, key: str) -> bool: ...
+
+    def delete(self, bucket: str, key: str) -> None: ...
+
+    def public_url(self, bucket: str, key: str) -> str: ...
+
+    def presigned_url(self, bucket: str, key: str, *, expires_in: int) -> str: ...
+
+
+class ImageInspector(Protocol):
+    """Decodes image bytes; raises MediaValidationError for anything that isn't a safe image."""
+
+    def inspect(self, data: bytes) -> ImageInfo: ...
+
+
+class MediaAssetRepository(Protocol):
+    def add(self, asset: MediaAsset) -> None: ...
+
+    def get(self, asset_id: UUID) -> MediaAsset | None: ...
+
+    def delete(self, asset_id: UUID) -> None: ...
+
+    def list(
+        self, *, purpose: MediaPurpose | None, limit: int, offset: int
+    ) -> Sequence[MediaAsset]: ...
+
+    def existing_ids(self, ids: Iterable[UUID]) -> set[UUID]: ...
+
+    def in_use(self, asset_id: UUID) -> bool: ...
+
+
+class UnitOfWork(Protocol):
+    def flush(self) -> None: ...
+
+    def commit(self) -> None: ...
+
+    def rollback(self) -> None: ...

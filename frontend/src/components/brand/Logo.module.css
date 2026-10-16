@@ -1,0 +1,42 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dark {
+  color: var(--color-heading);
+}
+
+.light {
+  color: var(--tk-ivory-50);
+}
+
+.light .kids {
+  color: var(--tk-coral-400);
+}
+
+.star {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-highlight);
+  fill: var(--tk-gold-200);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.logo:hover .star {
+  transform: rotate(45deg) scale(1.1);
+}
+
+.word {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.kids {
+  margin-left: 0.25em;
+  color: var(--color-accent);
+  font-style: italic;
+}

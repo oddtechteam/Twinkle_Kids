@@ -1,0 +1,93 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding-block: clamp(4rem, 10vw, 8rem);
+  background:
+    radial-gradient(60% 80% at 85% 10%, var(--tk-blush-200) 0%, transparent 60%),
+    radial-gradient(50% 70% at 10% 90%, var(--tk-gold-200) 0%, transparent 65%),
+    var(--color-bg);
+}
+
+.content {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+}
+
+.eyebrow {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--tk-gold-400);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tk-gold-600);
+}
+
+.title {
+  max-width: 14ch;
+  font-size: var(--text-display);
+  font-variation-settings: "SOFT" 100;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 38rem;
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+.devLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-weight: 700;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.devLink:hover {
+  transform: translateY(-2px);
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.twinkle {
+  position: absolute;
+  width: 0.75rem;
+  aspect-ratio: 1;
+  background: var(--tk-gold-400);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  opacity: 0.7;
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+.twinkle:nth-child(1) { top: 14%; left: 62%; }
+.twinkle:nth-child(2) { top: 28%; left: 88%; width: 1.25rem; animation-delay: 0.6s; }
+.twinkle:nth-child(3) { top: 70%; left: 78%; animation-delay: 1.2s; background: var(--tk-coral-400); }
+.twinkle:nth-child(4) { top: 82%; left: 46%; width: 0.5rem; animation-delay: 1.8s; }
+.twinkle:nth-child(5) { top: 10%; left: 30%; width: 0.5rem; animation-delay: 2.4s; }
+.twinkle:nth-child(6) { top: 48%; left: 94%; width: 0.6rem; animation-delay: 0.9s; background: var(--tk-blush-300); }
+.twinkle:nth-child(7) { top: 58%; left: 66%; width: 1rem; animation-delay: 2s; }
+
+@keyframes twinkle {
+  0%, 100% { transform: scale(0.8) rotate(0deg); opacity: 0.35; }
+  50% { transform: scale(1.15) rotate(20deg); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle {
+    animation: none;
+  }
+}
