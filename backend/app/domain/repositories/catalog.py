@@ -3,7 +3,7 @@ from typing import Protocol
 from uuid import UUID
 
 from app.domain.entities.catalog import Category, Product
-from app.domain.entities.content import Collection, HomepageSection
+from app.domain.entities.content import Collection
 from app.domain.enums import InventoryReason
 
 
@@ -59,16 +59,6 @@ class CollectionRepository(Protocol):
         ...
 
     def product_ids(self, collection_id: UUID) -> list[UUID]: ...
-
-
-class HomepageSectionRepository(Protocol):
-    def get(self, section_id: UUID) -> HomepageSection | None: ...
-
-    def add(self, section: HomepageSection) -> None: ...
-
-    def set_products(self, section_id: UUID, product_ids: list[UUID]) -> None: ...
-
-    def product_ids(self, section_id: UUID) -> list[UUID]: ...
 
 
 class InventoryLedger(Protocol):

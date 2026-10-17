@@ -7,6 +7,7 @@ from app.application.dto.catalog import (
     MAX_PAGE_SIZE,
     CategoryDetail,
     CategorySummary,
+    CollectionSummary,
     Page,
     ProductDetail,
     ProductFilters,
@@ -44,6 +45,16 @@ class CatalogReader:
         if detail is None:
             raise NotFoundError("Product not found.")
         return detail
+
+    def ordered(self, product_ids: Sequence[UUID]) -> Sequence[ProductSummary]:
+        """Admin ordering views: every listed product (drafts included), in the given order."""
+        return self._queries.ordered_products(product_ids, include_inactive=True)
+
+    def collection(self, slug: str) -> CollectionSummary:
+        found = self._queries.get_collection(slug)
+        if found is None:
+            raise NotFoundError("Collection not found.")
+        return found
 
     def categories(self, *, include_inactive: bool = False) -> Sequence[CategorySummary]:
         return self._queries.list_categories(include_inactive=include_inactive)

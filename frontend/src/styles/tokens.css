@@ -1,103 +1,151 @@
 /*
- * Twinkle Kids design tokens — single source of truth for colour, type, spacing and motion.
- * Palette is drawn from the brand poster: navy, warm ivory, blush pink, coral and soft gold.
- * Components must reference these variables, never raw hex values.
+ * Twinkle Kids design tokens — the single source of truth for colour, type, spacing, shape,
+ * depth and motion. Components reference these variables only; never raw values.
+ *
+ * Brand palette: warm ivory #FFF7F1 · blush pink #F5CDD3 · deep navy #1C2D52 ·
+ * coral pink #EE788B · soft gold #D6B17B. "-strong"/"-text" variants exist where the brand
+ * tint is too light to meet WCAG AA as text.
  */
 
 :root {
-  /* Brand palette */
-  --tk-navy-900: #141c36;
-  --tk-navy-800: #1d2848;
-  --tk-navy-700: #2a3760;
-  --tk-navy-100: #e4e7f0;
+  /* ---- Brand palette -------------------------------------------------------------------- */
+  --tk-ivory: #fff7f1;
+  --tk-ivory-deep: #fbece2;
+  --tk-paper: #fffdfb;
 
-  --tk-ivory-50: #fffcf7;
-  --tk-ivory-100: #fbf6ee;
-  --tk-ivory-200: #f4ebdc;
+  --tk-blush: #f5cdd3;
+  --tk-blush-soft: #fbe7ea;
+  --tk-blush-deep: #e8aab5;
 
-  --tk-blush-100: #fcefee;
-  --tk-blush-200: #f8dcdb;
-  --tk-blush-300: #f1c3c3;
+  --tk-navy: #1c2d52;
+  --tk-navy-ink: #131f3b;
+  --tk-navy-soft: #34477a;
+  --tk-navy-mist: #e7eaf2;
 
-  --tk-coral-400: #f08a77;
-  --tk-coral-500: #e8705c;
-  --tk-coral-600: #c4513f; /* AA on white/ivory for text & buttons */
+  --tk-coral: #ee788b;
+  --tk-coral-soft: #fde3e7;
+  --tk-coral-strong: #b23a52; /* AA text/buttons on ivory and white */
 
-  --tk-gold-200: #f1e1bd;
-  --tk-gold-400: #d9b26f;
-  --tk-gold-600: #a7803c;
+  --tk-gold: #d6b17b;
+  --tk-gold-soft: #f5eadb;
+  --tk-gold-text: #876226; /* AA text on ivory */
 
-  --tk-success-600: #2f7d5b;
-  --tk-danger-600: #b3372b;
+  --tk-sage: #c9d8c5; /* supporting pastel for illustration variety */
+  --tk-sky: #cfdcef;
 
-  /* Semantic roles */
-  --color-bg: var(--tk-ivory-100);
-  --color-surface: var(--tk-ivory-50);
-  --color-surface-soft: var(--tk-blush-100);
-  --color-text: var(--tk-navy-800);
-  --color-text-muted: #5a6280;
-  --color-heading: var(--tk-navy-900);
-  --color-primary: var(--tk-navy-800);
-  --color-primary-contrast: var(--tk-ivory-50);
-  --color-accent: var(--tk-coral-600);
-  --color-accent-soft: var(--tk-coral-400);
-  --color-highlight: var(--tk-gold-400);
-  --color-border: #e8dfd0;
-  --color-focus: var(--tk-coral-500);
-  --color-price: var(--tk-navy-900);
-  --color-price-mrp: #8a8fa3;
-  --color-discount: var(--tk-coral-600);
+  --tk-success: #2f7d5b;
+  --tk-warning: #9a6a12;
+  --tk-danger: #b3372b;
 
-  /* Typography (font families are injected by next/font in the root layout) */
-  --font-display: var(--font-fraunces), "Georgia", serif;
+  /* ---- Semantic roles ------------------------------------------------------------------- */
+  --color-bg: var(--tk-ivory);
+  --color-bg-alt: var(--tk-ivory-deep);
+  --color-surface: var(--tk-paper);
+  --color-surface-tint: var(--tk-blush-soft);
+  --color-text: var(--tk-navy);
+  --color-text-muted: #5a6585;
+  --color-text-subtle: #7d86a0;
+  --color-heading: var(--tk-navy-ink);
+  --color-border: #eddcd2;
+  --color-border-strong: #d9c3b6;
+
+  --color-primary: var(--tk-navy);
+  --color-primary-hover: var(--tk-navy-ink);
+  --color-on-primary: var(--tk-paper);
+  --color-accent: var(--tk-coral-strong);
+  --color-accent-hover: #962c43;
+  --color-accent-soft: var(--tk-coral-soft);
+  --color-highlight: var(--tk-coral);
+  --color-decor: var(--tk-gold);
+
+  --color-price: var(--tk-navy-ink);
+  --color-price-compare: var(--color-text-subtle);
+  --color-sale: var(--tk-coral-strong);
+  --color-sale-bg: var(--tk-coral-soft);
+  --color-focus: var(--tk-coral);
+  --color-overlay: rgb(19 31 59 / 0.45);
+
+  /* ---- Typography (families injected by next/font in the root layout) -------------------- */
+  --font-heading: var(--font-nunito), ui-rounded, "Segoe UI", system-ui, sans-serif;
   --font-body: var(--font-nunito-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
 
+  --weight-regular: 400;
+  --weight-medium: 600;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+  --weight-black: 900;
+
+  --text-2xs: 0.6875rem;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
-  --text-3xl: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
-  --text-display: clamp(2.5rem, 1.6rem + 4vw, 4.5rem);
+  --text-md: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: clamp(1.25rem, 1.15rem + 0.4vw, 1.5rem);
+  --text-2xl: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  --text-3xl: clamp(1.875rem, 1.4rem + 1.9vw, 2.75rem);
+  --text-4xl: clamp(2.25rem, 1.5rem + 3.2vw, 4rem);
+  --text-display: clamp(2.6rem, 1.6rem + 4.4vw, 5.25rem);
 
-  --leading-tight: 1.15;
+  --leading-tight: 1.08;
+  --leading-snug: 1.25;
   --leading-normal: 1.6;
+  --tracking-tight: -0.02em;
+  --tracking-wide: 0.12em;
 
-  /* Spacing scale (4px base) */
+  /* ---- Spacing (4px base) ---------------------------------------------------------------- */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
-  --space-8: 4rem;
-  --space-9: 6rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 2rem;
+  --space-8: 2.5rem;
+  --space-9: 3rem;
+  --space-10: 4rem;
+  --space-11: 5rem;
+  --space-12: 6.5rem;
+  --section-gap: clamp(3.5rem, 2.5rem + 4vw, 6.5rem);
 
-  /* Shape & depth */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.875rem;
-  --radius-lg: 1.5rem;
-  --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgb(20 28 54 / 0.06);
-  --shadow-md: 0 8px 24px -8px rgb(20 28 54 / 0.18);
-  --shadow-lg: 0 24px 48px -16px rgb(20 28 54 / 0.22);
-
-  /* Layout */
-  --container-max: 1240px;
-  --container-gutter: clamp(1rem, 0.5rem + 2vw, 2rem);
+  /* ---- Layout ---------------------------------------------------------------------------- */
+  --container-max: 1280px;
+  --container-narrow: 880px;
+  --container-gutter: clamp(1rem, 0.5rem + 2.4vw, 2.5rem);
   --header-height: 4.5rem;
 
-  /* Motion */
+  /* ---- Shape & depth --------------------------------------------------------------------- */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.625rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2.25rem;
+  --radius-arch: 999px 999px var(--radius-lg) var(--radius-lg);
+  --radius-pill: 999px;
+
+  --shadow-xs: 0 1px 2px rgb(19 31 59 / 0.06);
+  --shadow-sm: 0 2px 8px -2px rgb(19 31 59 / 0.1);
+  --shadow-md: 0 12px 28px -12px rgb(19 31 59 / 0.22);
+  --shadow-lg: 0 28px 60px -24px rgb(19 31 59 / 0.3);
+  --shadow-focus: 0 0 0 3px var(--tk-paper), 0 0 0 5px var(--color-focus);
+
+  /* ---- Motion ---------------------------------------------------------------------------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --duration-fast: 150ms;
-  --duration-base: 250ms;
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 140ms;
+  --duration-base: 240ms;
+  --duration-slow: 520ms;
+
+  /* ---- Layers ---------------------------------------------------------------------------- */
+  --z-header: 40;
+  --z-overlay: 60;
+  --z-toast: 80;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
     --duration-base: 0ms;
+    --duration-slow: 0ms;
   }
 }

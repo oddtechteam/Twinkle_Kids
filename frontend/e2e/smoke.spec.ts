@@ -3,8 +3,9 @@ import { expect, test } from "@playwright/test";
 test("homepage renders the Twinkle Kids shell", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/Twinkle Kids/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Cute Styles for Little Smiles");
-  await expect(page.getByRole("link", { name: "Twinkle Kids home" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Big Smiles");
+  await expect(page.getByRole("link", { name: "Twinkle Kids — home" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Shop Collection" })).toBeVisible();
 });
 
 test("status page reports the storefront and API", async ({ page }) => {

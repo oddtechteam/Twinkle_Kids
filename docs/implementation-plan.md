@@ -52,6 +52,16 @@ Each phase ends with passing backend checks (`pytest`, `ruff`, `mypy`), frontend
 - [ ] SQLAlchemy models, repositories, Alembic migration; seed script with sample data
 - [ ] Integration tests against Postgres (docker or Neon branch); money as integer minor units
 
+## Storefront UI (Prompt 3) ✅ implemented (verification deferred to QA phase)
+
+- [x] Design tokens (brand palette), Nunito/Nunito Sans, UI component library
+- [x] Announcement bar, header (search, account, wishlist, bag), category bar, mobile menu, footer
+- [x] CMS-ready homepage: editorial hero, categories, product rails, collections, festive banner,
+      assurances; testimonials/contact hidden until real data exists
+- [x] Shop / category / collection / search listings with URL-driven filters, sort, pagination
+- [x] Product detail: gallery, colour/size selectors, variant pricing, size guide, related products
+- [x] Guest wishlist; bag + account as honest integration points (no fake cart/auth)
+
 ## Phase 3 — Authentication & admin security
 
 - [ ] Password hashing (argon2), JWT access + refresh in httpOnly cookies, CSRF strategy

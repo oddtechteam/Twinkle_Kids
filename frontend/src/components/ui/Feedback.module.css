@@ -1,0 +1,93 @@
+.skeleton {
+  display: block;
+  width: 100%;
+  height: 1em;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    100deg,
+    var(--tk-ivory-deep) 30%,
+    var(--tk-paper) 50%,
+    var(--tk-ivory-deep) 70%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.6s var(--ease-in-out) infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: clamp(var(--space-8), 6vw, var(--space-11)) var(--space-6);
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: var(--space-2);
+  border-radius: 50%;
+  background: var(--tk-blush-soft);
+  color: var(--color-accent);
+}
+
+.emblem > svg:first-child {
+  color: var(--color-accent);
+}
+
+.sparkA,
+.sparkB {
+  position: absolute;
+}
+
+.sparkA {
+  top: 2px;
+  right: -4px;
+}
+
+.sparkB {
+  bottom: 4px;
+  left: -6px;
+  color: var(--tk-coral);
+}
+
+.title {
+  font-size: var(--text-xl);
+}
+
+.description {
+  max-width: 36rem;
+  color: var(--color-text-muted);
+}
+
+.action {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.error .emblem {
+  background: var(--tk-navy-mist);
+}

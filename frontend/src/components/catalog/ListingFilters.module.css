@@ -1,0 +1,89 @@
+.form {
+  display: grid;
+  gap: var(--space-7);
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.form[aria-busy="true"] {
+  opacity: 0.6;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  margin-bottom: var(--space-3);
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-3);
+}
+
+.bands {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.bands > label > span {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* ---- Sidebar ---- */
+
+.sidebar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    position: sticky;
+    top: calc(var(--header-height) + 3.5rem);
+    display: grid;
+    align-content: start;
+    gap: var(--space-6);
+    max-height: calc(100dvh - var(--header-height) - 5rem);
+    overflow-y: auto;
+    padding-right: var(--space-3);
+    scrollbar-width: thin;
+  }
+}
+
+.sidebarTitle {
+  font-size: var(--text-xl);
+}
+
+.drawerButton {
+  display: inline-flex;
+}
+
+@media (min-width: 1024px) {
+  .drawerButton {
+    display: none;
+  }
+}
+
+.sort {
+  min-width: 13rem;
+}

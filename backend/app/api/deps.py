@@ -10,14 +10,26 @@ from app.application.use_cases.auth import AuthService, RequestContext
 from app.application.use_cases.catalog_admin import CategoryCommands, ProductCommands
 from app.application.use_cases.catalog_queries import CatalogReader
 from app.application.use_cases.check_health import CheckHealth
+from app.application.use_cases.collections import CollectionService
+from app.application.use_cases.dashboard import DashboardReader
+from app.application.use_cases.homepage import HomepageBuilder, PublicHomepage
 from app.application.use_cases.media import (
     DeleteMedia,
     GetMedia,
     ListMedia,
     MediaPolicy,
+    ReplaceMedia,
+    UpdateMediaDetails,
     UploadMedia,
 )
-from app.application.use_cases.merchandising import MerchandisingService
+from app.application.use_cases.site import (
+    NavigationService,
+    PageService,
+    PublicSiteReader,
+    SettingsService,
+    ShippingService,
+    SizeChartService,
+)
 from app.bootstrap import Container
 from app.core.config import Settings
 from app.core.version import __version__
@@ -25,10 +37,10 @@ from app.domain.entities.identity import Permission, User
 from app.domain.errors import PermissionDeniedError
 from app.domain.repositories.health import HealthProbe
 from app.infrastructure.db.catalog_queries import SqlAlchemyCatalogQueries
+from app.infrastructure.db.dashboard_queries import SqlAlchemyDashboardQueries
 from app.infrastructure.db.repositories.catalog import (
     SqlAlchemyCategoryRepository,
     SqlAlchemyCollectionRepository,
-    SqlAlchemyHomepageSectionRepository,
     SqlAlchemyProductRepository,
 )
 from app.infrastructure.db.repositories.identity import (
@@ -38,6 +50,15 @@ from app.infrastructure.db.repositories.identity import (
 )
 from app.infrastructure.db.repositories.inventory import SqlAlchemyInventoryLedger
 from app.infrastructure.db.repositories.media import SqlAlchemyMediaAssetRepository
+from app.infrastructure.db.repositories.site import (
+    SqlAlchemyCollectionAdminRepository,
+    SqlAlchemyHomepageBuilderRepository,
+    SqlAlchemyNavigationRepository,
+    SqlAlchemyPageRepository,
+    SqlAlchemySettingsRepository,
+    SqlAlchemyShippingRuleRepository,
+    SqlAlchemySizeChartRepository,
+)
 from app.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -145,6 +166,7 @@ StaffUserDep = Annotated[User, Depends(require_permission(Permission.ADMIN_ACCES
 CatalogManagerDep = Annotated[User, Depends(require_permission(Permission.CATALOG_MANAGE))]
 ContentManagerDep = Annotated[User, Depends(require_permission(Permission.CONTENT_MANAGE))]
 MediaManagerDep = Annotated[User, Depends(require_permission(Permission.MEDIA_MANAGE))]
+SettingsManagerDep = Annotated[User, Depends(require_permission(Permission.SETTINGS_MANAGE))]
 
 
 # --- Catalogue --------------------------------------------------------------------------------
@@ -162,6 +184,7 @@ def get_product_commands(session: SessionDep) -> ProductCommands:
         inventory=SqlAlchemyInventoryLedger(session),
         audit=SqlAlchemyAuditLogRepository(session),
         uow=SqlAlchemyUnitOfWork(session),
+        collections=SqlAlchemyCollectionAdminRepository(session),
     )
 
 
@@ -175,23 +198,114 @@ def get_category_commands(session: SessionDep) -> CategoryCommands:
     )
 
 
-def get_merchandising(container: ContainerDep, session: SessionDep) -> MerchandisingService:
-    return MerchandisingService(
+def _queries(container: Container, session: Session) -> SqlAlchemyCatalogQueries:
+    return SqlAlchemyCatalogQueries(session, container.storage)
+
+
+def get_collection_service(container: ContainerDep, session: SessionDep) -> CollectionService:
+    return CollectionService(
         collections=SqlAlchemyCollectionRepository(session),
-        sections=SqlAlchemyHomepageSectionRepository(session),
-        categories=SqlAlchemyCategoryRepository(session),
+        admin=SqlAlchemyCollectionAdminRepository(session),
         products=SqlAlchemyProductRepository(session),
         media=SqlAlchemyMediaAssetRepository(session),
-        queries=SqlAlchemyCatalogQueries(session, container.storage),
+        queries=_queries(container, session),
         audit=SqlAlchemyAuditLogRepository(session),
         uow=SqlAlchemyUnitOfWork(session),
     )
 
 
+def get_homepage_builder(session: SessionDep) -> HomepageBuilder:
+    return HomepageBuilder(
+        sections=SqlAlchemyHomepageBuilderRepository(session),
+        categories=SqlAlchemyCategoryRepository(session),
+        collections=SqlAlchemyCollectionAdminRepository(session),
+        products=SqlAlchemyProductRepository(session),
+        media=SqlAlchemyMediaAssetRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_public_homepage(container: ContainerDep, session: SessionDep) -> PublicHomepage:
+    return PublicHomepage(
+        sections=SqlAlchemyHomepageBuilderRepository(session),
+        categories=SqlAlchemyCategoryRepository(session),
+        queries=_queries(container, session),
+    )
+
+
+def get_settings_service(session: SessionDep) -> SettingsService:
+    return SettingsService(
+        settings=SqlAlchemySettingsRepository(session),
+        media=SqlAlchemyMediaAssetRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_navigation_service(session: SessionDep) -> NavigationService:
+    return NavigationService(
+        navigation=SqlAlchemyNavigationRepository(session),
+        categories=SqlAlchemyCategoryRepository(session),
+        collections=SqlAlchemyCollectionAdminRepository(session),
+        pages=SqlAlchemyPageRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_page_service(session: SessionDep) -> PageService:
+    return PageService(
+        pages=SqlAlchemyPageRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_shipping_service(session: SessionDep) -> ShippingService:
+    return ShippingService(
+        rules=SqlAlchemyShippingRuleRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_size_chart_service(session: SessionDep) -> SizeChartService:
+    return SizeChartService(
+        charts=SqlAlchemySizeChartRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_public_site(container: ContainerDep, session: SessionDep) -> PublicSiteReader:
+    return PublicSiteReader(
+        settings=SqlAlchemySettingsRepository(session),
+        navigation=SqlAlchemyNavigationRepository(session),
+        categories=SqlAlchemyCategoryRepository(session),
+        collections=SqlAlchemyCollectionAdminRepository(session),
+        pages=SqlAlchemyPageRepository(session),
+        queries=_queries(container, session),
+    )
+
+
+def get_dashboard(session: SessionDep) -> DashboardReader:
+    return DashboardReader(SqlAlchemyDashboardQueries(session))
+
+
 CatalogReaderDep = Annotated[CatalogReader, Depends(get_catalog_reader)]
 ProductCommandsDep = Annotated[ProductCommands, Depends(get_product_commands)]
 CategoryCommandsDep = Annotated[CategoryCommands, Depends(get_category_commands)]
-MerchandisingDep = Annotated[MerchandisingService, Depends(get_merchandising)]
+CollectionServiceDep = Annotated[CollectionService, Depends(get_collection_service)]
+HomepageBuilderDep = Annotated[HomepageBuilder, Depends(get_homepage_builder)]
+PublicHomepageDep = Annotated[PublicHomepage, Depends(get_public_homepage)]
+SettingsServiceDep = Annotated[SettingsService, Depends(get_settings_service)]
+NavigationServiceDep = Annotated[NavigationService, Depends(get_navigation_service)]
+PageServiceDep = Annotated[PageService, Depends(get_page_service)]
+ShippingServiceDep = Annotated[ShippingService, Depends(get_shipping_service)]
+SizeChartServiceDep = Annotated[SizeChartService, Depends(get_size_chart_service)]
+PublicSiteDep = Annotated[PublicSiteReader, Depends(get_public_site)]
+DashboardDep = Annotated[DashboardReader, Depends(get_dashboard)]
 
 
 # --- Media ------------------------------------------------------------------------------------
@@ -228,3 +342,25 @@ UploadMediaDep = Annotated[UploadMedia, Depends(get_upload_media)]
 GetMediaDep = Annotated[GetMedia, Depends(get_get_media)]
 ListMediaDep = Annotated[ListMedia, Depends(get_list_media)]
 DeleteMediaDep = Annotated[DeleteMedia, Depends(get_delete_media)]
+
+
+def get_update_media(container: ContainerDep, session: SessionDep) -> UpdateMediaDetails:
+    return UpdateMediaDetails(
+        storage=container.storage,
+        repository=SqlAlchemyMediaAssetRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_replace_media(container: ContainerDep, session: SessionDep) -> ReplaceMedia:
+    return ReplaceMedia(
+        storage=container.storage,
+        repository=SqlAlchemyMediaAssetRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+        inspector=container.image_inspector,
+        policy=MediaPolicy(max_bytes=container.settings.media_max_upload_bytes),
+    )
+
+
+UpdateMediaDep = Annotated[UpdateMediaDetails, Depends(get_update_media)]
+ReplaceMediaDep = Annotated[ReplaceMedia, Depends(get_replace_media)]

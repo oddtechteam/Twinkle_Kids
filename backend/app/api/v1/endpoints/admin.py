@@ -11,26 +11,28 @@ from app.api.deps import (
     CatalogReaderDep,
     CategoryCommandsDep,
     ContentManagerDep,
-    MerchandisingDep,
+    CollectionServiceDep,
     ProductCommandsDep,
     StaffUserDep,
 )
 from app.api.schemas.admin import (
+    PublishStatusIn,
     ActiveIn,
     CategoryIn,
     CollectionIn,
     CreatedOut,
-    HomepageSectionIn,
     OrderingIn,
     ProductIn,
     ProductStatusIn,
 )
 from app.api.schemas.auth import AdminMeOut
+from app.api.schemas.content import AdminCollectionOut
 from app.api.schemas.catalog import (
+    AdminCategoryDetailOut,
     AdminCategoryOut,
     AdminProductDetailOut,
     AdminProductListOut,
-    ProductSummaryOut,
+    AdminProductSummaryOut,
 )
 from app.application.dto.catalog import MAX_PAGE_SIZE, ProductFilters, ProductSort
 from app.domain.enums import ProductStatus
@@ -90,6 +92,19 @@ def admin_update_product(
     return AdminProductDetailOut.model_validate(reader.admin_product(product_id))
 
 
+@router.post(
+    "/products/{product_id}/duplicate",
+    response_model=AdminProductDetailOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def admin_duplicate_product(
+    product_id: UUID, user: CatalogManagerDep, commands: ProductCommandsDep, reader: CatalogReaderDep
+) -> AdminProductDetailOut:
+    """Copy as a draft with unique slug/SKUs and zero stock."""
+    copy_id = commands.duplicate(product_id, actor_id=user.id)
+    return AdminProductDetailOut.model_validate(reader.admin_product(copy_id))
+
+
 @router.patch("/products/{product_id}/status", response_model=AdminProductDetailOut)
 def admin_set_product_status(
     product_id: UUID,
@@ -115,6 +130,22 @@ def admin_create_category(
     body: CategoryIn, user: CatalogManagerDep, commands: CategoryCommandsDep
 ) -> CreatedOut:
     return CreatedOut(id=commands.create(body.to_input(), actor_id=user.id))
+
+
+@router.get("/categories/{category_id}", response_model=AdminCategoryDetailOut)
+def admin_get_category(
+    category_id: UUID, _: CatalogManagerDep, commands: CategoryCommandsDep, reader: CatalogReaderDep
+) -> AdminCategoryDetailOut:
+    category, product_ids = commands.get(category_id)
+    return AdminCategoryDetailOut.of(category, reader.ordered(product_ids))
+
+
+@router.put("/categories/{category_id}/products", status_code=status.HTTP_204_NO_CONTENT)
+def admin_set_category_products(
+    category_id: UUID, body: OrderingIn, user: CatalogManagerDep, commands: CategoryCommandsDep
+) -> None:
+    """Set membership and this category's own product order in one step."""
+    commands.set_products(category_id, body.product_ids, actor_id=user.id)
 
 
 @router.put("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -144,41 +175,48 @@ def admin_order_category_products(
 
 @router.post("/collections", response_model=CreatedOut, status_code=status.HTTP_201_CREATED)
 def admin_create_collection(
-    body: CollectionIn, user: ContentManagerDep, service: MerchandisingDep
+    body: CollectionIn, user: ContentManagerDep, service: CollectionServiceDep
 ) -> CreatedOut:
-    return CreatedOut(id=service.create_collection(body.to_input(), actor_id=user.id))
+    return CreatedOut(id=service.create(body.to_input(), actor_id=user.id))
 
 
 @router.put("/collections/{collection_id}/products", status_code=status.HTTP_204_NO_CONTENT)
 def admin_set_collection_products(
-    collection_id: UUID, body: OrderingIn, user: ContentManagerDep, service: MerchandisingDep
+    collection_id: UUID, body: OrderingIn, user: ContentManagerDep, service: CollectionServiceDep
 ) -> None:
-    service.set_collection_products(collection_id, body.product_ids, actor_id=user.id)
+    service.set_products(collection_id, body.product_ids, actor_id=user.id)
 
 
-@router.get("/collections/{collection_id}/products", response_model=list[ProductSummaryOut])
+@router.get("/collections/{collection_id}/products", response_model=list[AdminProductSummaryOut])
 def admin_collection_products(
-    collection_id: UUID, _: ContentManagerDep, service: MerchandisingDep
-) -> list[ProductSummaryOut]:
-    return [ProductSummaryOut.model_validate(p) for p in service.collection_products(collection_id)]
+    collection_id: UUID, _: ContentManagerDep, service: CollectionServiceDep
+) -> list[AdminProductSummaryOut]:
+    return [AdminProductSummaryOut.model_validate(p) for p in service.products(collection_id)]
 
 
-@router.post("/homepage-sections", response_model=CreatedOut, status_code=status.HTTP_201_CREATED)
-def admin_create_section(
-    body: HomepageSectionIn, user: ContentManagerDep, service: MerchandisingDep
-) -> CreatedOut:
-    return CreatedOut(id=service.create_section(body.to_input(), actor_id=user.id))
+@router.get("/collections", response_model=list[AdminCollectionOut])
+def admin_list_collections(
+    _: ContentManagerDep, service: CollectionServiceDep
+) -> list[AdminCollectionOut]:
+    return [AdminCollectionOut.of(c, count) for c, count in service.list()]
 
 
-@router.put("/homepage-sections/{section_id}/products", status_code=status.HTTP_204_NO_CONTENT)
-def admin_set_section_products(
-    section_id: UUID, body: OrderingIn, user: ContentManagerDep, service: MerchandisingDep
+@router.get("/collections/{collection_id}", response_model=AdminCollectionOut)
+def admin_get_collection(
+    collection_id: UUID, _: ContentManagerDep, service: CollectionServiceDep
+) -> AdminCollectionOut:
+    return AdminCollectionOut.of(service.get(collection_id))
+
+
+@router.put("/collections/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_update_collection(
+    collection_id: UUID, body: CollectionIn, user: ContentManagerDep, service: CollectionServiceDep
 ) -> None:
-    service.set_section_products(section_id, body.product_ids, actor_id=user.id)
+    service.update(collection_id, body.to_input(), actor_id=user.id)
 
 
-@router.get("/homepage-sections/{section_id}/products", response_model=list[ProductSummaryOut])
-def admin_section_products(
-    section_id: UUID, _: ContentManagerDep, service: MerchandisingDep
-) -> list[ProductSummaryOut]:
-    return [ProductSummaryOut.model_validate(p) for p in service.section_products(section_id)]
+@router.patch("/collections/{collection_id}/status", status_code=status.HTTP_204_NO_CONTENT)
+def admin_set_collection_status(
+    collection_id: UUID, body: PublishStatusIn, user: ContentManagerDep, service: CollectionServiceDep
+) -> None:
+    service.set_status(collection_id, body.status, actor_id=user.id)

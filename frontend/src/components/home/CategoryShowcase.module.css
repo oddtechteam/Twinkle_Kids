@@ -1,0 +1,137 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  list-style: none;
+}
+
+@media (min-width: 960px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 15rem;
+    gap: var(--space-5);
+  }
+
+  /* Bento rhythm: the first category gets a feature tile. */
+  .grid > .item:first-child {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  .count2 > .item:first-child,
+  .count3 > .item:first-child {
+    grid-row: span 1;
+  }
+}
+
+.item {
+  min-width: 0;
+}
+
+.tile {
+  --tile-bg: var(--tk-blush-soft);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 13rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--tile-bg);
+  isolation: isolate;
+  transition:
+    transform var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.tile:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.tile:focus-visible {
+  border-radius: var(--radius-lg);
+}
+
+.blush {
+  --tile-bg: var(--tk-blush-soft);
+}
+
+.sky {
+  --tile-bg: var(--tk-sky);
+}
+
+.gold {
+  --tile-bg: var(--tk-gold-soft);
+}
+
+.sage {
+  --tile-bg: var(--tk-sage);
+}
+
+.ivory {
+  --tile-bg: var(--tk-ivory-deep);
+}
+
+.navy {
+  --tile-bg: var(--tk-navy-mist);
+}
+
+.visual {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.visual svg,
+.photo {
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.photo {
+  object-fit: cover;
+}
+
+.tile:hover .visual svg,
+.tile:hover .photo {
+  transform: scale(1.05);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: auto var(--space-3) var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--tk-paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-sm);
+}
+
+.name {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-heavy);
+  font-size: var(--text-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.tile:hover .arrow {
+  transform: rotate(45deg);
+}

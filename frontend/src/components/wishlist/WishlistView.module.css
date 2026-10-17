@@ -1,0 +1,28 @@
+.page {
+  display: grid;
+  gap: var(--space-7);
+  padding-block: var(--space-6) var(--space-10);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--text-4xl);
+}
+
+.count {
+  font-weight: var(--weight-bold);
+  color: var(--color-text-muted);
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-text-subtle);
+  text-align: center;
+}

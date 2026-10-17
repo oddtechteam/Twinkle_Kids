@@ -107,6 +107,8 @@ class ProductModel(Base):
     seo_metadata: Mapped[dict[str, Any]] = mapped_column(
         JSONType, default=dict, server_default=text("'{}'")
     )
+    # Admin-managed display badges (validated in the domain: max 3 short labels).
+    badges: Mapped[list[str]] = mapped_column(JSONType, default=list, server_default=text("'[]'"))
     published_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()

@@ -82,6 +82,7 @@ class ProductSummary:
     primary_image: ImageView | None
     status: ProductStatus
     published_at: datetime | None
+    badges: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +113,22 @@ class ProductDetail:
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    badges: list[str] = field(default_factory=list)
+    size_chart_id: UUID | None = None
+    collection_ids: list[UUID] = field(default_factory=list)  # admin view only
+
+
+@dataclass(frozen=True, slots=True)
+class CollectionSummary:
+    id: UUID
+    name: str
+    slug: str
+    description: str | None
+    image: ImageView | None
+    status: str
+    display_order: int
+    seo_title: str | None = None
+    seo_description: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

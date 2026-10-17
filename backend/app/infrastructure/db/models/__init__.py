@@ -21,6 +21,7 @@ from app.infrastructure.db.models.commerce import (
 from app.infrastructure.db.models.content import (
     CollectionModel,
     CollectionProductModel,
+    HomepagePublicationModel,
     HomepageSectionModel,
     HomepageSectionProductModel,
     NavigationItemModel,
@@ -58,6 +59,7 @@ __all__ = [
     "CollectionProductModel",
     "CouponModel",
     "CouponRedemptionModel",
+    "HomepagePublicationModel",
     "HomepageSectionModel",
     "HomepageSectionProductModel",
     "InventoryMovementModel",

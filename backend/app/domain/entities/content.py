@@ -61,12 +61,11 @@ class HomepageSection:
             raise DomainValidationError(
                 f"Product limit must be between 1 and {MAX_SECTION_PRODUCTS}."
             )
-        needs_image = self.section_type in {
-            HomepageSectionType.HERO_BANNER,
-            HomepageSectionType.PROMO_BANNER,
-        }
-        if needs_image and self.desktop_media_id is None:
-            raise DomainValidationError("Banner sections need a desktop image.")
+        if (
+            self.section_type is HomepageSectionType.OCCASION_COLLECTION
+            and self.selection_mode is not SelectionMode.COLLECTION
+        ):
+            raise DomainValidationError("Occasion sections feature exactly one collection.")
 
 
 def validate_ordering(product_ids: list[UUID], *, limit: int = 500) -> list[UUID]:

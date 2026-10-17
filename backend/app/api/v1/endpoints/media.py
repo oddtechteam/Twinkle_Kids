@@ -8,9 +8,13 @@ from app.api.deps import (
     GetMediaDep,
     ListMediaDep,
     MediaManagerDep,
+    ReplaceMediaDep,
+    UpdateMediaDep,
     SettingsDep,
     UploadMediaDep,
 )
+from app.api.schemas.admin import MediaPatchIn
+from app.api.schemas.content import MediaUsageOut
 from app.api.schemas.media import AdminMediaAssetOut, MediaAssetOut
 from app.application.use_cases.media import UploadMediaCommand
 from app.domain.entities.media import MediaPurpose, MediaVisibility
@@ -74,3 +78,35 @@ def get_media(asset_id: UUID, _: MediaManagerDep, use_case: GetMediaDep) -> Admi
 def delete_media(asset_id: UUID, _: MediaManagerDep, use_case: DeleteMediaDep) -> Response:
     use_case.execute(asset_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@admin_router.patch("/{asset_id}", response_model=AdminMediaAssetOut)
+def update_media(
+    asset_id: UUID, body: MediaPatchIn, _: MediaManagerDep, use_case: UpdateMediaDep
+) -> AdminMediaAssetOut:
+    return AdminMediaAssetOut.from_view(use_case.execute(asset_id, alt_text=body.alt_text))
+
+
+@admin_router.get("/{asset_id}/usage", response_model=MediaUsageOut)
+def media_usage(asset_id: UUID, _: MediaManagerDep, use_case: UpdateMediaDep) -> MediaUsageOut:
+    places = use_case.usage(asset_id)
+    return MediaUsageOut(in_use=bool(places), places=places)
+
+
+@admin_router.post("/{asset_id}/replace", response_model=AdminMediaAssetOut)
+def replace_media(
+    asset_id: UUID,
+    _: MediaManagerDep,
+    use_case: ReplaceMediaDep,
+    settings: SettingsDep,
+    file: Annotated[UploadFile, File(description="JPEG, PNG, WebP or AVIF image")],
+) -> AdminMediaAssetOut:
+    """Swap the file but keep the asset id, so every reference shows the new image."""
+    limit = settings.media_max_upload_bytes
+    data = file.file.read(limit + 1)
+    if len(data) > limit:
+        raise MediaTooLargeError(f"File exceeds the {limit} byte limit.")
+    view = use_case.execute(
+        asset_id, data=data, declared_content_type=file.content_type, filename=file.filename
+    )
+    return AdminMediaAssetOut.from_view(view)

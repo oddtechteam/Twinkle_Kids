@@ -10,6 +10,8 @@ from app.domain.value_objects.pricing import PricePair, resolve_variant_price, t
 
 MAX_VARIANTS = 200
 MAX_PRODUCT_MEDIA = 30
+MAX_BADGES = 3
+MAX_BADGE_LENGTH = 24
 
 
 @dataclass(slots=True)
@@ -83,6 +85,7 @@ class Product:
     primary_category_id: UUID | None = None
     variants: list[ProductVariant] = field(default_factory=list)
     media: list[ProductMediaLink] = field(default_factory=list)  # ordered: index = position
+    badges: list[str] = field(default_factory=list)  # admin-managed labels, e.g. "New season"
     published_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -94,6 +97,10 @@ class Product:
             raise DomainValidationError("Low-stock threshold cannot be negative.")
         if len(self.variants) > MAX_VARIANTS:
             raise DomainValidationError(f"A product can have at most {MAX_VARIANTS} variants.")
+        if len(self.badges) > MAX_BADGES:
+            raise DomainValidationError(f"A product can show at most {MAX_BADGES} badges.")
+        if any(not b.strip() or len(b) > MAX_BADGE_LENGTH for b in self.badges):
+            raise DomainValidationError(f"Badges must be 1-{MAX_BADGE_LENGTH} characters.")
         if len(self.media) > MAX_PRODUCT_MEDIA:
             raise DomainValidationError(f"A product can have at most {MAX_PRODUCT_MEDIA} images.")
 

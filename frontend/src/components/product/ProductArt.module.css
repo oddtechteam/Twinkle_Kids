@@ -1,0 +1,113 @@
+.art {
+  --art-bg: var(--tk-blush-soft);
+  --art-halo: var(--tk-blush);
+  --art-main: var(--tk-coral);
+  --art-light: var(--tk-blush);
+  --art-accent: var(--tk-gold);
+  --art-detail: var(--tk-navy);
+  --art-sparkle: var(--tk-gold);
+
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bg {
+  fill: var(--art-bg);
+}
+
+.halo {
+  fill: var(--art-halo);
+  opacity: 0.45;
+}
+
+.sparkles {
+  fill: var(--art-sparkle);
+}
+
+.hanger {
+  stroke: var(--art-detail);
+  opacity: 0.85;
+}
+
+.garment {
+  filter: drop-shadow(0 10px 12px color-mix(in srgb, var(--tk-navy-ink) 12%, transparent));
+  transform-origin: 120px 150px;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.main {
+  fill: var(--art-main);
+}
+
+.light {
+  fill: var(--art-light);
+}
+
+.lightStroke {
+  stroke: var(--art-light);
+}
+
+.accent {
+  fill: var(--art-accent);
+}
+
+.detail {
+  fill: var(--art-detail);
+}
+
+.detailStroke {
+  stroke: var(--art-detail);
+}
+
+.dots {
+  fill: var(--tk-paper);
+  opacity: 0.85;
+}
+
+/* ---- Tones ---- */
+
+.ivory {
+  --art-bg: var(--tk-ivory-deep);
+  --art-halo: var(--tk-gold-soft);
+  --art-main: var(--tk-blush);
+  --art-light: var(--tk-paper);
+  --art-accent: var(--tk-coral);
+}
+
+.navy {
+  --art-bg: var(--tk-navy-mist);
+  --art-halo: var(--tk-sky);
+  --art-main: var(--tk-navy);
+  --art-light: var(--tk-navy-soft);
+  --art-accent: var(--tk-gold);
+  --art-detail: var(--tk-blush);
+  --art-sparkle: var(--tk-coral);
+}
+
+.gold {
+  --art-bg: var(--tk-gold-soft);
+  --art-halo: var(--tk-paper);
+  --art-main: var(--tk-gold);
+  --art-light: var(--tk-ivory-deep);
+  --art-accent: var(--tk-navy);
+  --art-detail: var(--tk-coral-strong);
+  --art-sparkle: var(--tk-coral);
+}
+
+.sky {
+  --art-bg: var(--tk-sky);
+  --art-halo: var(--tk-paper);
+  --art-main: var(--tk-paper);
+  --art-light: var(--tk-blush-soft);
+  --art-accent: var(--tk-coral);
+}
+
+.sage {
+  --art-bg: var(--tk-sage);
+  --art-halo: var(--tk-paper);
+  --art-main: var(--tk-ivory);
+  --art-light: var(--tk-gold-soft);
+  --art-accent: var(--tk-navy);
+  --art-detail: var(--tk-coral-strong);
+}

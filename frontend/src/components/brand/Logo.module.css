@@ -2,41 +2,82 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  flex-shrink: 0;
 }
 
-.dark {
-  color: var(--color-heading);
+.mark {
+  width: 2.1rem;
+  height: 2.1rem;
+  transition: transform var(--duration-slow) var(--ease-out);
 }
 
-.light {
-  color: var(--tk-ivory-50);
+.logo:hover .mark {
+  transform: rotate(-12deg) scale(1.06);
 }
 
-.light .kids {
-  color: var(--tk-coral-400);
+.markBg {
+  fill: var(--tk-blush);
 }
 
-.star {
-  width: 1.5rem;
-  height: 1.5rem;
-  color: var(--color-highlight);
-  fill: var(--tk-gold-200);
-  transition: transform var(--duration-base) var(--ease-out);
+.markStar {
+  fill: var(--tk-navy);
 }
 
-.logo:hover .star {
-  transform: rotate(45deg) scale(1.1);
+.markDot {
+  fill: var(--tk-gold);
 }
 
 .word {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  display: inline-flex;
+  gap: 0.28em;
+  font-family: var(--font-heading);
+  font-weight: var(--weight-black);
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
-.kids {
-  margin-left: 0.25em;
+.accentWord {
   color: var(--color-accent);
-  font-style: italic;
+}
+
+.dark {
+  color: var(--tk-navy-ink);
+}
+
+.light {
+  color: var(--tk-paper);
+}
+
+.light .markBg {
+  fill: var(--tk-navy-soft);
+}
+
+.light .markStar {
+  fill: var(--tk-blush);
+}
+
+.light .accentWord {
+  color: var(--tk-blush);
+}
+
+.lg .word {
+  font-size: 1.85rem;
+}
+
+.lg .mark {
+  width: 2.6rem;
+  height: 2.6rem;
+}
+
+@media (max-width: 380px) {
+  .md .word {
+    font-size: 1.25rem;
+  }
+}
+
+.image {
+  width: auto;
+  max-width: 12rem;
+  object-fit: contain;
 }

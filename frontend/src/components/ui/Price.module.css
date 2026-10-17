@@ -1,0 +1,56 @@
+.price {
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem var(--space-2);
+}
+
+.from {
+  font-family: var(--font-body);
+  font-size: 0.8em;
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+
+.selling {
+  font-weight: var(--weight-black);
+  color: var(--color-price);
+  font-variant-numeric: tabular-nums;
+}
+
+.compare {
+  font-family: var(--font-body);
+  font-size: 0.82em;
+  font-weight: var(--weight-regular);
+  color: var(--color-price-compare);
+  text-decoration-thickness: 1.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  align-self: center;
+  padding: 0.18em 0.6em;
+  border-radius: var(--radius-pill);
+  background: var(--color-sale-bg);
+  color: var(--color-sale);
+  font-size: 0.72em;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.02em;
+}
+
+.sm {
+  font-size: var(--text-base);
+}
+
+.md {
+  font-size: var(--text-lg);
+}
+
+.lg {
+  font-size: var(--text-2xl);
+}

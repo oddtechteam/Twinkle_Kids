@@ -5,12 +5,10 @@ from sqlalchemy import delete, func, insert, select, union_all
 from sqlalchemy.orm import Session
 
 from app.domain.entities.catalog import Category, Product, ProductMediaLink, ProductVariant
-from app.domain.entities.content import Collection, HomepageSection
+from app.domain.entities.content import Collection
 from app.domain.enums import (
-    HomepageSectionType,
     ProductStatus,
     PublishStatus,
-    SelectionMode,
 )
 from app.domain.value_objects.pricing import PricePair
 from app.infrastructure.db.models.catalog import (
@@ -23,8 +21,6 @@ from app.infrastructure.db.models.catalog import (
 from app.infrastructure.db.models.content import (
     CollectionModel,
     CollectionProductModel,
-    HomepageSectionModel,
-    HomepageSectionProductModel,
 )
 
 MAX_CATEGORY_DEPTH = 20
@@ -75,6 +71,7 @@ def _product_to_entity(row: ProductModel) -> Product:
             )
             for m in row.media_links
         ],
+        badges=list(row.badges or []),
         published_at=row.published_at,
         created_at=row.created_at,
         updated_at=row.updated_at,
@@ -148,6 +145,7 @@ class SqlAlchemyProductRepository:
         row.seo_title = product.seo_title
         row.seo_description = product.seo_description
         row.seo_metadata = dict(product.seo_metadata)
+        row.badges = list(product.badges)
         row.published_at = product.published_at
 
         self._sync_variants(row, product.variants)
@@ -380,75 +378,5 @@ class SqlAlchemyCollectionRepository:
             select(CollectionProductModel.product_id)
             .where(CollectionProductModel.collection_id == collection_id)
             .order_by(CollectionProductModel.position)
-        )
-        return list(self._session.scalars(stmt))
-
-
-class SqlAlchemyHomepageSectionRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def get(self, section_id: UUID) -> HomepageSection | None:
-        row = self._session.get(HomepageSectionModel, section_id)
-        if row is None:
-            return None
-        return HomepageSection(
-            id=row.id,
-            section_type=HomepageSectionType(row.section_type),
-            title=row.title,
-            subtitle=row.subtitle,
-            settings=dict(row.settings or {}),
-            is_visible=row.is_visible,
-            status=PublishStatus(row.status),
-            position=row.position,
-            desktop_media_id=row.desktop_media_id,
-            mobile_media_id=row.mobile_media_id,
-            selection_mode=SelectionMode(row.selection_mode),
-            source_category_id=row.source_category_id,
-            source_collection_id=row.source_collection_id,
-            product_limit=row.product_limit,
-        )
-
-    def add(self, section: HomepageSection) -> None:
-        self._session.add(
-            HomepageSectionModel(
-                id=section.id,
-                section_type=section.section_type.value,
-                title=section.title,
-                subtitle=section.subtitle,
-                settings=section.settings,
-                is_visible=section.is_visible,
-                status=section.status.value,
-                position=section.position,
-                desktop_media_id=section.desktop_media_id,
-                mobile_media_id=section.mobile_media_id,
-                selection_mode=section.selection_mode.value,
-                source_category_id=section.source_category_id,
-                source_collection_id=section.source_collection_id,
-                product_limit=section.product_limit,
-            )
-        )
-        self._session.flush()
-
-    def set_products(self, section_id: UUID, product_ids: list[UUID]) -> None:
-        self._session.execute(
-            delete(HomepageSectionProductModel).where(
-                HomepageSectionProductModel.section_id == section_id
-            )
-        )
-        if product_ids:
-            self._session.execute(
-                insert(HomepageSectionProductModel),
-                [
-                    {"section_id": section_id, "product_id": pid, "position": i}
-                    for i, pid in enumerate(product_ids)
-                ],
-            )
-
-    def product_ids(self, section_id: UUID) -> list[UUID]:
-        stmt = (
-            select(HomepageSectionProductModel.product_id)
-            .where(HomepageSectionProductModel.section_id == section_id)
-            .order_by(HomepageSectionProductModel.position)
         )
         return list(self._session.scalars(stmt))

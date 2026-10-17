@@ -1,0 +1,33 @@
+.card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: clamp(var(--space-8), 5vw, var(--space-11)) var(--space-6);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 15% 20%, var(--tk-gold-soft), transparent 40%),
+    var(--tk-blush-soft);
+  text-align: center;
+}
+
+.star {
+  color: var(--tk-gold);
+}
+
+.title {
+  font-size: var(--text-3xl);
+}
+
+.body {
+  max-width: 32rem;
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}

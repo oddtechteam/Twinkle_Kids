@@ -1,11 +1,16 @@
 from collections.abc import Iterable, Sequence
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from app.domain.entities.media import MediaAsset, MediaPurpose, MediaVisibility
-from app.infrastructure.db.models.catalog import ProductMediaModel
+from app.infrastructure.db.models.catalog import CategoryModel, ProductMediaModel, ProductModel
+from app.infrastructure.db.models.content import (
+    CollectionModel,
+    HomepageSectionModel,
+    StoreSettingsModel,
+)
 from app.infrastructure.db.models.media import MediaAssetModel
 
 
@@ -78,6 +83,58 @@ class SqlAlchemyMediaAssetRepository:
         )
 
     def in_use(self, asset_id: UUID) -> bool:
-        """True when a product image still references the asset (FK is RESTRICT)."""
-        stmt = select(ProductMediaModel.id).where(ProductMediaModel.media_asset_id == asset_id)
-        return self._session.scalars(stmt.limit(1)).first() is not None
+        return bool(self.usage(asset_id))
+
+    def usage(self, asset_id: UUID) -> list[str]:
+        """Every place that references the asset. Deleting is refused while any exist."""
+        places: list[str] = []
+        products = self._session.scalars(
+            select(ProductModel.name)
+            .join(ProductMediaModel, ProductMediaModel.product_id == ProductModel.id)
+            .where(ProductMediaModel.media_asset_id == asset_id)
+        )
+        places += [f"Product: {name}" for name in products]
+        places += [
+            f"Category: {name}"
+            for name in self._session.scalars(
+                select(CategoryModel.name).where(CategoryModel.image_media_id == asset_id)
+            )
+        ]
+        places += [
+            f"Collection: {name}"
+            for name in self._session.scalars(
+                select(CollectionModel.name).where(CollectionModel.image_media_id == asset_id)
+            )
+        ]
+        sections = self._session.execute(
+            select(HomepageSectionModel.title, HomepageSectionModel.section_type).where(
+                or_(
+                    HomepageSectionModel.desktop_media_id == asset_id,
+                    HomepageSectionModel.mobile_media_id == asset_id,
+                )
+            )
+        )
+        places += [f"Homepage section: {title or kind}" for title, kind in sections]
+        settings = self._session.get(StoreSettingsModel, 1)
+        if settings is not None:
+            if settings.logo_media_id == asset_id:
+                places.append("Store logo")
+            if settings.favicon_media_id == asset_id:
+                places.append("Store favicon")
+            if str(asset_id) == str((settings.seo_defaults or {}).get("og_image_media_id")):
+                places.append("SEO sharing image")
+        return places
+
+    def update(self, asset: MediaAsset) -> None:
+        row = self._session.get(MediaAssetModel, asset.id)
+        if row is None:
+            raise LookupError(f"Media asset {asset.id} does not exist.")
+        row.object_key = asset.object_key
+        row.content_type = asset.content_type
+        row.size_bytes = asset.size_bytes
+        row.width = asset.width
+        row.height = asset.height
+        row.sha256 = asset.sha256
+        row.original_filename = asset.original_filename
+        row.alt_text = asset.alt_text
+        self._session.flush()

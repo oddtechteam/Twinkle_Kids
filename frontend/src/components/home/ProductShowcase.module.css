@@ -1,0 +1,15 @@
+.section {
+  position: relative;
+}
+
+.blush {
+  background: var(--tk-blush-soft);
+}
+
+.gold {
+  background: var(--tk-gold-soft);
+}
+
+.navy {
+  background: var(--tk-navy-mist);
+}

@@ -1,0 +1,367 @@
+/* Interactive hero stage: podium, figures, gestures and message cards. Scoped to the hero. */
+
+.stage {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+.scene {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 640 / 620;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ---- Faces: cursor-following (values −1…1 in --lx / --ly, set per figure) ---- */
+
+.figure {
+  --lx: 0;
+  --ly: 0;
+}
+
+.head,
+.features,
+.pupil,
+.hairFront,
+.lid,
+.body {
+  transform-box: fill-box;
+}
+
+.head {
+  transform-origin: 50% 92%;
+  transform: translate(calc(var(--lx) * 2px), calc(var(--ly) * 1.4px)) rotate(calc(var(--lx) * 5deg));
+}
+
+.features {
+  transform: translate(calc(var(--lx) * 3.4px), calc(var(--ly) * 2.4px));
+}
+
+.hairFront {
+  transform: translate(calc(var(--lx) * 1.4px), calc(var(--ly) * 0.8px));
+}
+
+/* The pupil is clipped to the eye white, so it never leaves the socket. */
+.pupil {
+  transform-origin: 50% 50%;
+  transform: translate(calc(var(--lx) * 2.2px), calc(var(--ly) * 2px));
+}
+
+.lid {
+  transform-origin: 50% 0%;
+  transform: scaleY(0);
+  animation: blink 5.8s infinite;
+}
+
+.boyHead .lid {
+  animation-delay: 2.3s;
+}
+
+@keyframes blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(0);
+  }
+  95.5% {
+    transform: scaleY(1);
+  }
+}
+
+.body {
+  transform-origin: 50% 100%;
+  animation: breathe 5.5s ease-in-out infinite;
+}
+
+.figure:last-child .body {
+  animation-delay: -2.4s;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.007);
+  }
+}
+
+/* Touch / no-hover devices: relaxed default pose with a soft idle head sway. */
+.stage[data-mode="idle"] .head {
+  animation: idleHead 7s ease-in-out infinite alternate;
+}
+
+.stage[data-mode="idle"] .boyHead {
+  animation-delay: -3.5s;
+}
+
+@keyframes idleHead {
+  from {
+    transform: rotate(-2.5deg);
+  }
+  to {
+    transform: rotate(3deg) translateY(-0.6px);
+  }
+}
+
+/* ---- Arms: shoulder ▸ elbow ▸ wrist, each rotating about its own joint ----
+ * --dir is +1 for the arm on the figure's +x side, −1 for the −x side, so a positive angle always
+ * swings the arm outward. Angles are in degrees.
+ */
+
+.shoulder,
+.elbow,
+.wrist {
+  transform-origin: 0 0;
+  transition: transform 720ms cubic-bezier(0.45, 0.05, 0.25, 1);
+}
+
+.shoulder {
+  --sh: 8;
+  --el: 6;
+  --wr: 0;
+  transform: rotate(calc(var(--dir) * var(--sh) * -1deg));
+}
+
+.elbow {
+  transform: rotate(calc(var(--dir) * var(--el) * -1deg));
+}
+
+.wrist {
+  transform: rotate(calc(var(--dir) * var(--wr) * -1deg));
+}
+
+/* Open-palm presentation */
+.figure[data-gesture="present"] .lead {
+  --sh: 36;
+  --el: 64;
+  --wr: -14;
+}
+
+/* Gentle point towards the message */
+.figure[data-gesture="point"] .lead {
+  --sh: 62;
+  --el: 26;
+  --wr: 4;
+}
+
+/* Small welcoming open arms */
+.figure[data-gesture="welcome"] .lead,
+.figure[data-gesture="welcome"] .support {
+  --sh: 30;
+  --el: 34;
+  --wr: -12;
+}
+
+.handOpen,
+.handPoint {
+  transition: opacity 260ms ease;
+}
+
+.handPoint {
+  opacity: 0;
+}
+
+.figure[data-gesture="point"] .lead .handPoint {
+  opacity: 1;
+}
+
+.figure[data-gesture="point"] .lead .handOpen {
+  opacity: 0;
+}
+
+/* ---- Decorative sparkles ---- */
+
+.sparkle {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: twinkle 3.2s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Off-screen: freeze every CSS animation inside the stage. */
+.stage[data-paused="true"] * {
+  animation-play-state: paused;
+}
+
+/* ---- Message card, presented beside the gesturing hand ---- */
+
+.cards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: min(9.75rem, 24%);
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--tk-gold) 40%, transparent);
+  border-radius: 14px;
+  background: var(--tk-paper);
+  box-shadow:
+    0 14px 28px -16px rgb(28 45 82 / 0.4),
+    0 2px 6px -2px rgb(28 45 82 / 0.08);
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-heavy);
+  line-height: 1.25;
+  color: var(--tk-navy);
+  opacity: 0;
+  transform: translateY(8px) scale(0.96);
+  transition:
+    opacity 420ms ease,
+    transform 520ms var(--ease-out);
+}
+
+.card[data-show="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+.stage[data-phase="rotating"] .card {
+  opacity: 0;
+}
+
+/* Anchors match the presenting hand positions in the 640×620 scene. */
+.cardGirl {
+  right: 75.5%;
+  bottom: 56.8%;
+  transform-origin: 100% 100%;
+}
+
+.cardBoy {
+  left: 75.5%;
+  bottom: 59%;
+  transform-origin: 0% 100%;
+}
+
+.cardIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--tk-blush-soft);
+  color: var(--tk-coral);
+}
+
+.cardBoy .cardIcon {
+  background: var(--tk-gold-soft);
+  color: var(--tk-gold-text);
+}
+
+.cardText {
+  min-width: 0;
+}
+
+/* Small pointer towards the hand. */
+.cardPointer {
+  position: absolute;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid color-mix(in srgb, var(--tk-gold) 40%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--tk-gold) 40%, transparent);
+  background: var(--tk-paper);
+  transform: rotate(45deg);
+}
+
+.cardGirl .cardPointer {
+  right: 14px;
+}
+
+.cardBoy .cardPointer {
+  left: 14px;
+}
+
+/* Phones: the card sits below the display (never over faces, outfits or CTAs). */
+@media (max-width: 559px) {
+  .cards {
+    position: static;
+    display: flex;
+    min-height: 3.25rem;
+    margin-top: var(--space-2);
+    padding-inline: var(--space-2);
+  }
+
+  .card {
+    position: relative;
+    inset: auto;
+    max-width: 80%;
+    font-size: var(--text-xs);
+  }
+
+  .cardGirl {
+    margin-right: auto;
+  }
+
+  .cardBoy {
+    margin-left: auto;
+  }
+
+  .cardPointer {
+    top: -6px;
+    bottom: auto;
+    transform: rotate(-135deg);
+  }
+
+  .cardGirl .cardPointer {
+    left: 22%;
+    right: auto;
+  }
+
+  .cardBoy .cardPointer {
+    right: 22%;
+    left: auto;
+  }
+
+  .cardIcon {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lid,
+  .body,
+  .sparkle,
+  .stage[data-mode="idle"] .head {
+    animation: none;
+  }
+
+  .shoulder,
+  .elbow,
+  .wrist,
+  .handOpen,
+  .handPoint,
+  .card {
+    transition: none;
+  }
+}

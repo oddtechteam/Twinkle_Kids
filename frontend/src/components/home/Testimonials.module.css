@@ -1,0 +1,42 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-5);
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-7);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.card:nth-child(3n + 2) {
+  background: var(--tk-blush-soft);
+}
+
+.mark {
+  color: var(--tk-gold);
+}
+
+.quote {
+  margin: 0;
+  font-size: var(--text-md);
+}
+
+.author {
+  display: grid;
+  font-family: var(--font-heading);
+  font-weight: var(--weight-heavy);
+}
+
+.context {
+  font-family: var(--font-body);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

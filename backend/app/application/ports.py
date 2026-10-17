@@ -7,6 +7,8 @@ from uuid import UUID
 from app.application.dto.catalog import (
     CategoryDetail,
     CategorySummary,
+    CollectionSummary,
+    ImageView,
     Page,
     ProductDetail,
     ProductFilters,
@@ -45,6 +47,18 @@ class CatalogQueries(Protocol):
 
     def get_category(self, slug: str) -> CategoryDetail | None: ...
 
-    def ordered_products(self, product_ids: Sequence[UUID]) -> Sequence[ProductSummary]:
-        """Active products for the given ids, preserving the given order."""
+    def ordered_products(
+        self, product_ids: Sequence[UUID], *, include_inactive: bool = False
+    ) -> Sequence[ProductSummary]:
+        """Products for the given ids, preserving the given order (active only by default)."""
         ...
+
+    def list_collections(
+        self, *, ids: Sequence[UUID] | None = None, published_only: bool = True
+    ) -> Sequence[CollectionSummary]: ...
+
+    def get_collection(self, slug: str) -> CollectionSummary | None:
+        """Published collection by slug (public)."""
+        ...
+
+    def images(self, media_ids: Sequence[UUID]) -> dict[UUID, ImageView]: ...

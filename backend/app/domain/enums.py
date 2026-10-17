@@ -16,16 +16,27 @@ class PublishStatus(StrEnum):
 
 class HomepageSectionType(StrEnum):
     HERO_BANNER = "hero_banner"
+    CATEGORY_GRID = "category_grid"
     PRODUCT_CAROUSEL = "product_carousel"
     PRODUCT_GRID = "product_grid"
-    CATEGORY_GRID = "category_grid"
-    COLLECTION_SHOWCASE = "collection_showcase"
-    PROMO_BANNER = "promo_banner"
+    EDITORIAL_BANNER = "editorial_banner"  # image + text
+    PROMO_BANNER = "promo_banner"  # seasonal / festive banner
+    COLLECTION_SHOWCASE = "collection_showcase"  # featured collections
+    OCCASION_COLLECTION = "occasion_collection"  # one collection spotlight with its products
+    TRUST_STRIP = "trust_strip"
+    TESTIMONIALS = "testimonials"
+    FAQ = "faq"
+    ANNOUNCEMENT = "announcement"
+    CONTACT = "contact"
     RICH_TEXT = "rich_text"
 
 
 PRODUCT_SECTION_TYPES = frozenset(
-    {HomepageSectionType.PRODUCT_CAROUSEL, HomepageSectionType.PRODUCT_GRID}
+    {
+        HomepageSectionType.PRODUCT_CAROUSEL,
+        HomepageSectionType.PRODUCT_GRID,
+        HomepageSectionType.OCCASION_COLLECTION,
+    }
 )
 
 
@@ -48,6 +59,7 @@ class NavigationLinkType(StrEnum):
     COLLECTION = "collection"
     PAGE = "page"
     URL = "url"
+    HEADING = "heading"  # group label (e.g. a footer column) with child links
 
 
 class CartStatus(StrEnum):

@@ -1,0 +1,62 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 0;
+  color: var(--color-text);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.button svg {
+  transition:
+    fill var(--duration-fast) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.floating {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tk-paper) 92%, transparent);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(6px);
+}
+
+.floating:hover {
+  transform: scale(1.06);
+  color: var(--color-accent);
+}
+
+.inline {
+  min-height: 3.25rem;
+  padding: 0 var(--space-5);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-family: var(--font-heading);
+  font-weight: var(--weight-heavy);
+}
+
+.inline:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.saved {
+  color: var(--color-accent);
+}
+
+.saved svg {
+  fill: currentColor;
+  animation: pop var(--duration-slow) var(--ease-out);
+}
+
+@keyframes pop {
+  40% {
+    transform: scale(1.3);
+  }
+}

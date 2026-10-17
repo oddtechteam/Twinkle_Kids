@@ -1,40 +1,49 @@
-import { Heart, Search, ShoppingBag, User } from "lucide-react";
+import Link from "next/link";
+import { Suspense } from "react";
 
 import { Logo } from "@/components/brand/Logo";
+import type { SiteContent } from "@/lib/content/types";
+import { CategoryBar, CategoryBarFallback, CategoryMenuList } from "./CategoryBar";
+import { HeaderActions } from "./HeaderActions";
+import { MobileMenu } from "./MobileMenu";
 import styles from "./SiteHeader.module.css";
 
-const actions = [
-  { label: "Search", Icon: Search },
-  { label: "Wishlist", Icon: Heart },
-  { label: "Account", Icon: User },
-  { label: "Shopping bag", Icon: ShoppingBag },
-] as const;
-
-export function SiteHeader() {
+export function SiteHeader({ content }: { content: SiteContent }) {
+  const primary = content.navigation.primary;
   return (
     <header className={styles.header}>
-      <div className={`container ${styles.inner}`}>
-        <Logo />
+      <div className={`container ${styles.row}`}>
+        <div className={styles.start}>
+          <MobileMenu
+            links={content.navigation.mobile}
+            tagline={content.brand.tagline}
+            brandName={content.brand.name}
+          >
+            <Suspense fallback={null}>
+              <CategoryMenuList />
+            </Suspense>
+          </MobileMenu>
+          <Logo name={content.brand.name} image={content.brand.logo} />
+        </div>
 
-        {/* Category navigation is rendered from the Catalog API in Phase 3. */}
-        <nav aria-label="Main" className={styles.nav} />
+        <nav aria-label="Main" className={styles.nav}>
+          <ul className={styles.navList}>
+            {primary.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className={styles.navLink}>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        <ul className={styles.actions} aria-label="Shop actions">
-          {actions.map(({ label, Icon }) => (
-            <li key={label}>
-              <button
-                type="button"
-                className={styles.iconButton}
-                aria-label={label}
-                aria-disabled="true"
-                title={`${label} — coming soon`}
-              >
-                <Icon aria-hidden="true" strokeWidth={1.75} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <HeaderActions />
       </div>
+
+      <Suspense fallback={<CategoryBarFallback links={primary} />}>
+        <CategoryBar />
+      </Suspense>
     </header>
   );
 }

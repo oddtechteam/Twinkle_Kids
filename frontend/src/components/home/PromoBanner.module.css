@@ -1,0 +1,174 @@
+.banner {
+  --banner-bg: var(--tk-navy);
+  --banner-text: var(--tk-navy-mist);
+  --banner-heading: var(--tk-paper);
+  --banner-eyebrow: var(--tk-gold);
+
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: var(--space-8);
+  padding: clamp(var(--space-8), 5vw, var(--space-11));
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--tk-blush) 22%, transparent), transparent 45%),
+    radial-gradient(circle at 10% 110%, color-mix(in srgb, var(--tk-gold) 25%, transparent), transparent 40%),
+    var(--banner-bg);
+  color: var(--banner-text);
+}
+
+.blush {
+  --banner-bg: var(--tk-blush);
+  --banner-text: var(--tk-navy);
+  --banner-heading: var(--tk-navy-ink);
+  --banner-eyebrow: var(--tk-coral-strong);
+}
+
+.gold {
+  --banner-bg: var(--tk-gold-soft);
+  --banner-text: var(--tk-navy);
+  --banner-heading: var(--tk-navy-ink);
+  --banner-eyebrow: var(--tk-gold-text);
+}
+
+.ivory {
+  --banner-bg: var(--tk-ivory-deep);
+  --banner-text: var(--tk-navy);
+  --banner-heading: var(--tk-navy-ink);
+  --banner-eyebrow: var(--tk-gold-text);
+}
+
+@media (min-width: 960px) {
+  .banner {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+}
+
+.copy {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+  max-width: 34rem;
+}
+
+.eyebrow {
+  font-family: var(--font-heading);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--banner-eyebrow);
+}
+
+.title {
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-black);
+  color: var(--banner-heading);
+}
+
+.body {
+  font-size: var(--text-lg);
+}
+
+.visual {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 26rem);
+}
+
+.photoFrame {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-arch);
+  overflow: hidden;
+}
+
+.photo {
+  object-fit: cover;
+}
+
+.artStack {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 0.95;
+}
+
+.artBack,
+.artFront {
+  position: absolute;
+  display: block;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.artBack {
+  top: 0;
+  left: 0;
+  width: 52%;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-lg);
+  transform: rotate(-7deg);
+}
+
+.artFront {
+  right: 0;
+  bottom: 0;
+  width: 62%;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-arch);
+  outline: 8px solid color-mix(in srgb, var(--tk-paper) 85%, transparent);
+}
+
+.banner:hover .artBack {
+  transform: rotate(-11deg) translateY(-6px);
+}
+
+.banner:hover .artFront {
+  transform: translateY(-6px);
+}
+
+.sparkles {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.sparkles > * {
+  position: absolute;
+  color: var(--tk-gold);
+}
+
+.s1 {
+  top: 12%;
+  left: 46%;
+}
+
+.s2 {
+  top: 72%;
+  left: 6%;
+}
+
+.s3 {
+  bottom: 10%;
+  right: 42%;
+}
+
+.s4 {
+  top: 18%;
+  right: 8%;
+  color: var(--tk-coral);
+}
+
+@media (min-width: 960px) {
+  .flip {
+    grid-template-columns: 0.9fr 1.1fr;
+  }
+
+  .flip .copy {
+    order: 2;
+  }
+}

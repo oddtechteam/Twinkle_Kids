@@ -1,5 +1,6 @@
 """Catalogue response models. Built from application DTOs (from_attributes)."""
 
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -8,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.application.dto.catalog import Page, ProductSummary
+from app.domain.entities.catalog import Category
 from app.domain.enums import ProductStatus
 
 
@@ -66,6 +68,7 @@ class ProductSummaryOut(_Out):
     price_varies: bool
     in_stock: bool
     primary_image: ImageOut | None
+    badges: list[str] = []
 
 
 class AdminProductSummaryOut(ProductSummaryOut):
@@ -129,6 +132,7 @@ class ProductDetailOut(_Out):
     seo_description: str | None
     seo_metadata: dict[str, Any]
     published_at: datetime | None
+    badges: list[str] = []
 
 
 class AdminProductDetailOut(ProductDetailOut):
@@ -138,6 +142,8 @@ class AdminProductDetailOut(ProductDetailOut):
     low_stock_threshold: int
     primary_category_id: UUID | None
     variants: list[AdminVariantOut]  # type: ignore[assignment]
+    size_chart_id: UUID | None = None
+    collection_ids: list[UUID] = []
     created_at: datetime
     updated_at: datetime
 
@@ -165,3 +171,39 @@ class CategoryDetailOut(BaseModel):
     breadcrumbs: list[CategoryRefOut]
     seo_metadata: dict[str, Any]
     products: ProductListOut
+
+
+class AdminCategoryDetailOut(BaseModel):
+    """Editable category fields plus its products in this category's own order."""
+
+    id: UUID
+    name: str
+    slug: str
+    description: str | None
+    parent_id: UUID | None
+    image_media_id: UUID | None
+    is_active: bool
+    display_order: int
+    custom_product_ordering: bool
+    seo_title: str | None
+    seo_description: str | None
+    seo_metadata: dict[str, Any]
+    products: list[AdminProductSummaryOut]
+
+    @classmethod
+    def of(cls, c: Category, products: Sequence[ProductSummary]) -> "AdminCategoryDetailOut":
+        return cls(
+            id=c.id,
+            name=c.name,
+            slug=c.slug,
+            description=c.description,
+            parent_id=c.parent_id,
+            image_media_id=c.image_media_id,
+            is_active=c.is_active,
+            display_order=c.display_order,
+            custom_product_ordering=c.custom_product_ordering,
+            seo_title=c.seo_title,
+            seo_description=c.seo_description,
+            seo_metadata=c.seo_metadata,
+            products=[AdminProductSummaryOut.model_validate(p) for p in products],
+        )

@@ -124,6 +124,31 @@ frontend/src/
 - Accessibility baseline: skip link, landmark roles, labelled icon buttons, visible focus rings,
   `prefers-reduced-motion` respected, AA-contrast token pairs, no horizontal scroll at phone width.
 
+### Storefront (Prompt 3)
+
+```
+src/lib/catalog/      api.ts (server-only typed catalogue reads) · query.ts (URL <-> filters) · adapters.ts
+src/lib/content/      getSiteContent() + types; fixtures/development-content.ts until the CMS API exists
+src/lib/wishlist/     guest wishlist (product slugs in localStorage)
+src/lib/bag/          bag integration point — unavailable until the server cart API ships
+src/components/ui/    design system: Button, Price, Badge, Dialog/Drawer, Toast, Form controls,
+                      Breadcrumbs, Skeleton/EmptyState, Motif, SectionHeading, InfoPage
+src/components/{layout,home,product,catalog,search,wishlist}/
+src/app/              /, /shop, /category/[slug], /collections/[slug], /products/[slug],
+                      /search, /wishlist, /bag, /account, /pages/[slug]
+```
+
+- **Catalogue data is always live** (`/api/v1/products`, `/categories`). Prices are rendered from the
+  API's `PriceView` (selling, MRP, discount); the browser never derives authoritative prices.
+- **Editorial content is CMS-shaped** (sections with id/type/visibility/order/settings) and comes from
+  a clearly labelled development fixture. It contains no products, prices, reviews or business
+  claims; testimonials and contact sections stay hidden until real data is configured.
+- **Cache Components:** pages are synchronous shells; `params`/`searchParams` and catalogue fetches
+  are awaited inside `<Suspense>` with skeleton fallbacks. Add `"use cache"` in `lib/catalog/api.ts`
+  when CDN caching is introduced.
+- Products without photos render an illustrated, brand-coloured garment (`ProductArt`) — never
+  placeholder stock photography.
+
 ## Brand direction
 
 Palette from the poster: **navy** (`--tk-navy-*`), **warm ivory** (`--tk-ivory-*`), **blush pink**

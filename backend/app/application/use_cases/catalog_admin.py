@@ -14,6 +14,7 @@ from app.domain.errors import ConflictError, DomainValidationError, NotFoundErro
 from app.domain.repositories.catalog import CategoryRepository, InventoryLedger, ProductRepository
 from app.domain.repositories.identity import AuditLogRepository
 from app.domain.repositories.media import MediaAssetRepository, UnitOfWork
+from app.domain.repositories.site import CollectionAdminRepository
 from app.domain.value_objects.pricing import PricePair
 from app.domain.value_objects.text import clean_optional, slugify, validate_sku, validate_slug
 
@@ -69,6 +70,8 @@ class ProductInput:
     category_ids: list[UUID] = field(default_factory=list)
     primary_category_id: UUID | None = None
     media: list[MediaInput] = field(default_factory=list)
+    badges: list[str] = field(default_factory=list)
+    collection_ids: list[UUID] | None = None  # None = leave collection membership unchanged
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,8 +102,10 @@ class ProductCommands:
         inventory: InventoryLedger,
         audit: AuditLogRepository,
         uow: UnitOfWork,
+        collections: CollectionAdminRepository | None = None,
         clock: Clock = _utc_now,
     ) -> None:
+        self._collections = collections
         self._products = products
         self._categories = categories
         self._media = media
@@ -119,6 +124,7 @@ class ProductCommands:
         )
         previous_stock = self._build(product, data, existing=None)
         self._products.add(product)
+        self._sync_collections(product.id, data.collection_ids)
         self._record_stock(product, previous_stock, actor_id)
         self._audit.record(
             actor_user_id=actor_id,
@@ -135,6 +141,7 @@ class ProductCommands:
         before = {"selling": str(product.price.selling), "original": str(product.price.original)}
         previous_stock = self._build(product, data, existing=product)
         self._products.save(product)
+        self._sync_collections(product.id, data.collection_ids)
         self._record_stock(product, previous_stock, actor_id)
         self._audit.record(
             actor_user_id=actor_id,
@@ -166,7 +173,90 @@ class ProductCommands:
         )
         self._uow.commit()
 
+    def duplicate(self, product_id: UUID, *, actor_id: UUID | None) -> UUID:
+        """Copy a product as a draft with unique slug/SKUs and zero stock."""
+        source = self._require(product_id)
+        suffix = self._free_suffix(source)
+        copy = Product(
+            id=uuid4(),
+            name=f"{source.name} (copy)"[:200],
+            slug=f"{source.slug}-{suffix.lower()}"[:160],
+            sku=f"{source.sku}-{suffix}"[:64],
+            price=source.price,
+            status=ProductStatus.DRAFT,
+            short_description=source.short_description,
+            description=source.description,
+            rich_content=source.rich_content,
+            track_inventory=source.track_inventory,
+            allow_backorder=source.allow_backorder,
+            low_stock_threshold=source.low_stock_threshold,
+            size_chart_id=source.size_chart_id,
+            seo_title=source.seo_title,
+            seo_description=source.seo_description,
+            seo_metadata=dict(source.seo_metadata),
+            category_ids=list(source.category_ids),
+            primary_category_id=source.primary_category_id,
+            badges=list(source.badges),
+        )
+        variant_ids: dict[UUID, UUID] = {}
+        for variant in source.variants:
+            new_id = uuid4()
+            variant_ids[variant.id] = new_id
+            copy.variants.append(
+                ProductVariant(
+                    id=new_id,
+                    sku=f"{variant.sku}-{suffix}"[:64],
+                    size=variant.size,
+                    colour=variant.colour,
+                    colour_hex=variant.colour_hex,
+                    selling_price_override=variant.selling_price_override,
+                    original_price_override=variant.original_price_override,
+                    stock_quantity=0,  # stock is never duplicated
+                    position=variant.position,
+                    is_active=variant.is_active,
+                )
+            )
+        copy.media = [
+            ProductMediaLink(
+                m.media_asset_id,
+                m.alt_text,
+                variant_ids.get(m.variant_id) if m.variant_id else None,
+            )
+            for m in source.media
+        ]
+        copy.validate()
+        self._products.add(copy)
+        if self._collections is not None:
+            self._sync_collections(copy.id, self._collections.collections_for_product(source.id))
+        self._audit.record(
+            actor_user_id=actor_id,
+            action="product.duplicated",
+            entity_type="product",
+            entity_id=str(copy.id),
+            changes={"source": str(source.id)},
+        )
+        self._uow.commit()
+        return copy.id
+
     # -- helpers ------------------------------------------------------------------------------
+
+    def _free_suffix(self, source: Product) -> str:
+        for n in range(1, 100):
+            suffix = "COPY" if n == 1 else f"COPY{n}"
+            skus = [f"{source.sku}-{suffix}", *(f"{v.sku}-{suffix}" for v in source.variants)]
+            slug = f"{source.slug}-{suffix.lower()}"
+            if not self._products.slug_taken(slug) and not self._products.skus_taken(skus):
+                return suffix
+        raise ConflictError("Too many copies of this product already exist.")
+
+    def _sync_collections(self, product_id: UUID, collection_ids: list[UUID] | None) -> None:
+        if collection_ids is None or self._collections is None:
+            return
+        if len(set(collection_ids)) != len(collection_ids):
+            raise DomainValidationError("A collection can only be selected once.")
+        if set(collection_ids) - self._collections.existing_ids(collection_ids):
+            raise DomainValidationError("One or more collections do not exist.")
+        self._collections.set_product_collections(product_id, list(collection_ids))
 
     def _require(self, product_id: UUID) -> Product:
         product = self._products.get(product_id)
@@ -256,6 +346,7 @@ class ProductCommands:
         )
         product.variants = variants
         product.media = media_links
+        product.badges = [b.strip() for b in data.badges if b.strip()]
         product.change_status(data.status, now=self._clock())  # validates the whole aggregate
         return {vid: v.stock_quantity for vid, v in previous_variants.items()}
 
@@ -350,6 +441,49 @@ class CategoryCommands:
             entity_id=str(category_id),
         )
         self._uow.commit()
+
+    def get(self, category_id: UUID) -> tuple[Category, list[UUID]]:
+        """The category entity plus its products in that category's own order."""
+        return self._require(category_id), self._categories.product_ids(category_id)
+
+    def set_products(
+        self, category_id: UUID, product_ids: list[UUID], *, actor_id: UUID | None
+    ) -> None:
+        """Set which products belong to the category and their order in one step."""
+        self._require(category_id)
+        ordering = validate_ordering(product_ids)
+        if set(ordering) - self._products.existing_ids(ordering):
+            raise DomainValidationError("One or more products do not exist.")
+        current = set(self._categories.product_ids(category_id))
+        for product_id in set(ordering) - current:
+            self._change_membership(product_id, category_id, add=True)
+        for product_id in current - set(ordering):
+            self._change_membership(product_id, category_id, add=False)
+        self._categories.set_product_order(category_id, ordering)
+        self._audit.record(
+            actor_user_id=actor_id,
+            action="category.products_set",
+            entity_type="category",
+            entity_id=str(category_id),
+            changes={"count": len(ordering)},
+        )
+        self._uow.commit()
+
+    def _change_membership(self, product_id: UUID, category_id: UUID, *, add: bool) -> None:
+        product = self._products.get(product_id)
+        if product is None:
+            return
+        if add:
+            product.category_ids.append(category_id)
+            product.primary_category_id = product.primary_category_id or category_id
+        else:
+            product.category_ids = [c for c in product.category_ids if c != category_id]
+            if product.primary_category_id == category_id:
+                product.primary_category_id = (
+                    product.category_ids[0] if product.category_ids else None
+                )
+        product.validate()
+        self._products.save(product)
 
     def _require(self, category_id: UUID) -> Category:
         category = self._categories.get(category_id)

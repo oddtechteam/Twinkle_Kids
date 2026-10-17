@@ -15,6 +15,7 @@ from app.application.dto.catalog import (
     CategoryDetail,
     CategoryRef,
     CategorySummary,
+    CollectionSummary,
     ImageView,
     Page,
     PriceView,
@@ -97,6 +98,7 @@ class SqlAlchemyCatalogQueries:
             ),
             status=ProductStatus(row.status),
             published_at=row.published_at,
+            badges=list(row.badges or []),
         )
 
     def _load_products(self, ids: Sequence[UUID]) -> dict[UUID, ProductModel]:
@@ -235,13 +237,61 @@ class SqlAlchemyCatalogQueries:
             page_size=filters.page_size,
         )
 
-    def ordered_products(self, product_ids: Sequence[UUID]) -> Sequence[ProductSummary]:
+    def ordered_products(
+        self, product_ids: Sequence[UUID], *, include_inactive: bool = False
+    ) -> Sequence[ProductSummary]:
         rows = self._load_products(list(product_ids))
         return [
             self._summary(rows[pid])
             for pid in product_ids
-            if pid in rows and rows[pid].status == ProductStatus.ACTIVE.value
+            if pid in rows and (include_inactive or rows[pid].status == ProductStatus.ACTIVE.value)
         ]
+
+    # --- collections & media -------------------------------------------------------------
+
+    def _collection_summary(self, row: CollectionModel) -> CollectionSummary:
+        image = None
+        if row.image_media_id:
+            image = self.images([row.image_media_id]).get(row.image_media_id)
+        return CollectionSummary(
+            id=row.id,
+            name=row.name,
+            slug=row.slug,
+            description=row.description,
+            image=image,
+            status=row.status,
+            display_order=row.display_order,
+            seo_title=row.seo_title,
+            seo_description=row.seo_description,
+        )
+
+    def list_collections(
+        self, *, ids: Sequence[UUID] | None = None, published_only: bool = True
+    ) -> Sequence[CollectionSummary]:
+        stmt = select(CollectionModel).order_by(CollectionModel.display_order, CollectionModel.name)
+        if ids is not None:
+            if not ids:
+                return []
+            stmt = stmt.where(CollectionModel.id.in_(list(ids)))
+        if published_only:
+            stmt = stmt.where(CollectionModel.status == PublishStatus.PUBLISHED.value)
+        return [self._collection_summary(row) for row in self._session.scalars(stmt)]
+
+    def get_collection(self, slug: str) -> CollectionSummary | None:
+        row = self._session.scalars(
+            select(CollectionModel).where(
+                CollectionModel.slug == slug,
+                CollectionModel.status == PublishStatus.PUBLISHED.value,
+            )
+        ).first()
+        return self._collection_summary(row) if row else None
+
+    def images(self, media_ids: Sequence[UUID]) -> dict[UUID, ImageView]:
+        wanted = list({m for m in media_ids if m})
+        if not wanted:
+            return {}
+        rows = self._session.scalars(select(MediaAssetModel).where(MediaAssetModel.id.in_(wanted)))
+        return {row.id: image for row in rows if (image := self._image(row)) is not None}
 
     def get_product(
         self, *, slug: str | None = None, product_id: UUID | None = None, admin_view: bool = False
@@ -327,6 +377,19 @@ class SqlAlchemyCatalogQueries:
             published_at=row.published_at,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            badges=list(row.badges or []),
+            size_chart_id=row.size_chart_id,
+            collection_ids=(
+                list(
+                    self._session.scalars(
+                        select(CollectionProductModel.collection_id).where(
+                            CollectionProductModel.product_id == row.id
+                        )
+                    )
+                )
+                if admin_view
+                else []
+            ),
         )
 
     # --- categories ----------------------------------------------------------------------

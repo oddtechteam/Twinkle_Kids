@@ -225,6 +225,31 @@ class StoreSettingsModel(Base):
     extra: Mapped[dict[str, Any]] = mapped_column(
         JSONType, default=dict, server_default=text("'{}'")
     )
+    # Branding & storefront configuration (JSON groups are validated by
+    # app.application.content_settings before they are stored).
+    logo_media_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="SET NULL")
+    )
+    favicon_media_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="SET NULL")
+    )
+    theme: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
+    announcement: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
+    business_hours: Mapped[str | None] = mapped_column(String(120))
+    default_product_sort: Mapped[str] = mapped_column(
+        String(16), default="featured", server_default="featured"
+    )
+    whatsapp_message_template: Mapped[str | None] = mapped_column(Text)
+    payment_options: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONType, default=list, server_default=text("'[]'")
+    )
+    seo_defaults: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
     updated_at: Mapped[datetime] = updated_at_column()
 
     __table_args__ = (
@@ -234,4 +259,25 @@ class StoreSettingsModel(Base):
             "whatsapp_ordering_enabled = false OR whatsapp_number IS NOT NULL",
             name="whatsapp_number_required",
         ),
+        CheckConstraint(
+            "default_product_sort IN ('featured','newest','price_asc','price_desc','name_asc')",
+            name="default_sort_valid",
+        ),
     )
+
+
+class HomepagePublicationModel(Base):
+    """Immutable snapshot of the homepage at publish time. The storefront renders the latest
+    one; editing homepage_sections (the draft workspace) never changes the live site."""
+
+    __tablename__ = "homepage_publications"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONType)
+    published_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    note: Mapped[str | None] = mapped_column(String(200))
+    published_at: Mapped[datetime] = created_at_column()
+
+    __table_args__ = (Index("ix_homepage_publications_published_at", "published_at"),)

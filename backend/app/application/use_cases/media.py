@@ -6,11 +6,11 @@ Postgres is the source of truth for which files exist; the object store holds th
 import hashlib
 import logging
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from app.domain.entities.media import MediaAsset, MediaPurpose, MediaVisibility
+from app.domain.entities.media import ImageInfo, MediaAsset, MediaPurpose, MediaVisibility
 from app.domain.errors import (
     ConflictError,
     MediaTooLargeError,
@@ -79,6 +79,29 @@ def _clean_text(value: str | None, limit: int) -> str | None:
     return cleaned[:limit] or None
 
 
+def inspect_upload(
+    data: bytes, declared_type: str | None, policy: MediaPolicy, inspector: ImageInspector
+) -> tuple[ImageInfo, str]:
+    """Shared validation for new uploads and replacements. Returns (info, file extension)."""
+    size = len(data)
+    if size == 0:
+        raise MediaValidationError("The uploaded file is empty.")
+    if size > policy.max_bytes:
+        raise MediaTooLargeError(f"File is {size} bytes; the limit is {policy.max_bytes} bytes.")
+    declared = _normalise_type(declared_type)
+    if declared is not None and declared not in policy.allowed_types:
+        raise UnsupportedMediaTypeError(f"Unsupported file type: {declared}.")
+    info = inspector.inspect(data)  # decodes the actual bytes
+    extension = policy.allowed_types.get(info.content_type)
+    if extension is None:
+        raise UnsupportedMediaTypeError(f"Unsupported image format: {info.content_type}.")
+    if declared is not None and declared != info.content_type:
+        raise UnsupportedMediaTypeError(
+            f"File content is {info.content_type} but was declared as {declared}."
+        )
+    return info, extension
+
+
 class MediaUrlResolver:
     def __init__(self, storage: ObjectStorage) -> None:
         self._storage = storage
@@ -116,25 +139,9 @@ class UploadMedia:
 
     def execute(self, command: UploadMediaCommand) -> MediaView:
         size = len(command.data)
-        if size == 0:
-            raise MediaValidationError("The uploaded file is empty.")
-        if size > self._policy.max_bytes:
-            raise MediaTooLargeError(
-                f"File is {size} bytes; the limit is {self._policy.max_bytes} bytes."
-            )
-
-        declared = _normalise_type(command.declared_content_type)
-        if declared is not None and declared not in self._policy.allowed_types:
-            raise UnsupportedMediaTypeError(f"Unsupported file type: {declared}.")
-
-        info = self._inspector.inspect(command.data)  # decodes the actual bytes
-        extension = self._policy.allowed_types.get(info.content_type)
-        if extension is None:
-            raise UnsupportedMediaTypeError(f"Unsupported image format: {info.content_type}.")
-        if declared is not None and declared != info.content_type:
-            raise UnsupportedMediaTypeError(
-                f"File content is {info.content_type} but was declared as {declared}."
-            )
+        info, extension = inspect_upload(
+            command.data, command.declared_content_type, self._policy, self._inspector
+        )
 
         asset_id = self._new_id()
         bucket = self._buckets[command.visibility]
@@ -217,9 +224,10 @@ class DeleteMedia:
         asset = self._repository.get(asset_id)
         if asset is None:
             raise NotFoundError("Media not found.")
-        if self._repository.in_use(asset_id):
+        places = self._repository.usage(asset_id)
+        if places:
             raise ConflictError(
-                "This image is used by a product. Remove it from the product first."
+                "This image is still in use (" + "; ".join(places[:5]) + "). Remove it there first."
             )
         # Remove the reference first so nothing ever points at a missing object.
         self._repository.delete(asset_id)
@@ -233,3 +241,94 @@ class DeleteMedia:
                 asset.bucket,
                 asset.object_key,
             )
+
+
+class UpdateMediaDetails:
+    def __init__(
+        self, *, storage: ObjectStorage, repository: MediaAssetRepository, uow: UnitOfWork
+    ) -> None:
+        self._repository = repository
+        self._uow = uow
+        self._urls = MediaUrlResolver(storage)
+
+    def execute(self, asset_id: UUID, *, alt_text: str | None) -> MediaView:
+        asset = self._repository.get(asset_id)
+        if asset is None:
+            raise NotFoundError("Media not found.")
+        updated = replace(asset, alt_text=_clean_text(alt_text, MAX_ALT_TEXT))
+        self._repository.update(updated)
+        self._uow.commit()
+        return MediaView(asset=updated, url=self._urls.url_for(updated))
+
+    def usage(self, asset_id: UUID) -> list[str]:
+        if self._repository.get(asset_id) is None:
+            raise NotFoundError("Media not found.")
+        return self._repository.usage(asset_id)
+
+
+class ReplaceMedia:
+    """Swap the file behind an asset while keeping its id, so every reference (products,
+    categories, banners, settings) picks up the new image. The new file gets a new immutable
+    key, so CDN caches never serve the old bytes."""
+
+    def __init__(
+        self,
+        *,
+        storage: ObjectStorage,
+        repository: MediaAssetRepository,
+        uow: UnitOfWork,
+        inspector: ImageInspector,
+        policy: MediaPolicy,
+        new_id: Callable[[], UUID] = uuid4,
+    ) -> None:
+        self._storage = storage
+        self._repository = repository
+        self._uow = uow
+        self._inspector = inspector
+        self._policy = policy
+        self._new_id = new_id
+        self._urls = MediaUrlResolver(storage)
+
+    def execute(
+        self, asset_id: UUID, *, data: bytes, declared_content_type: str | None, filename: str | None
+    ) -> MediaView:
+        asset = self._repository.get(asset_id)
+        if asset is None:
+            raise NotFoundError("Media not found.")
+        info, extension = inspect_upload(data, declared_content_type, self._policy, self._inspector)
+        suffix = self._new_id().hex[:8]
+        key = f"{asset.purpose.value}/{asset.id.hex[:2]}/{asset.id}-{suffix}.{extension}"
+        cache_control = (
+            PUBLIC_CACHE_CONTROL
+            if asset.visibility is MediaVisibility.PUBLIC
+            else PRIVATE_CACHE_CONTROL
+        )
+        self._storage.put(
+            asset.bucket, key, data, content_type=info.content_type, cache_control=cache_control
+        )
+        updated = replace(
+            asset,
+            object_key=key,
+            content_type=info.content_type,
+            size_bytes=len(data),
+            width=info.width,
+            height=info.height,
+            sha256=hashlib.sha256(data).hexdigest(),
+            original_filename=_clean_text(filename, MAX_FILENAME) or asset.original_filename,
+        )
+        try:
+            self._repository.update(updated)
+            self._uow.commit()
+        except Exception:
+            self._uow.rollback()
+            _quiet_delete(self._storage, asset.bucket, key)
+            raise
+        _quiet_delete(self._storage, asset.bucket, asset.object_key)  # old bytes unreferenced now
+        return MediaView(asset=updated, url=self._urls.url_for(updated))
+
+
+def _quiet_delete(storage: ObjectStorage, bucket: str, key: str) -> None:
+    try:
+        storage.delete(bucket, key)
+    except Exception:
+        logger.exception("Failed to remove replaced object %s/%s", bucket, key)

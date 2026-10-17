@@ -1,0 +1,139 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+}
+
+.media {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: var(--shadow-xs);
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.image :is(img, svg) {
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.card:hover .media {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+}
+
+.card:hover .image :is(img, svg) {
+  transform: scale(1.04);
+}
+
+.badges {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  pointer-events: none;
+}
+
+.wishlist {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 3; /* above the stretched card link */
+}
+
+.body {
+  display: grid;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+}
+
+.name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  letter-spacing: 0;
+}
+
+/* Stretched link: the whole card is clickable, but only one link is announced. */
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--radius-lg);
+}
+
+.link:focus-visible {
+  box-shadow: none;
+}
+
+.link:focus-visible::after {
+  box-shadow: var(--shadow-focus);
+}
+
+.card:hover .name {
+  color: var(--color-accent);
+}
+
+.soldOut .image {
+  opacity: 0.72;
+}
+
+/* ---- Skeleton ---- */
+
+.skeleton {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.skeletonMedia,
+.skeletonLine {
+  display: block;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    100deg,
+    var(--tk-ivory-deep) 30%,
+    var(--tk-paper) 50%,
+    var(--tk-ivory-deep) 70%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.6s var(--ease-in-out) infinite;
+}
+
+.skeletonMedia {
+  aspect-ratio: 4 / 5;
+}
+
+.skeletonLine {
+  height: 0.9rem;
+  border-radius: var(--radius-pill);
+  width: 80%;
+}
+
+.short {
+  width: 40%;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonMedia,
+  .skeletonLine {
+    animation: none;
+  }
+}
