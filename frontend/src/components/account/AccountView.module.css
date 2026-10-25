@@ -1,0 +1,110 @@
+.page {
+  padding-block: var(--space-6) var(--space-11);
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  max-width: 30rem;
+  margin: var(--space-7) auto 0;
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--tk-paper);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--tk-blush-soft);
+  color: var(--color-accent);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-black);
+  color: var(--color-heading);
+}
+
+.lede {
+  color: var(--color-text-muted);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--tk-ivory-deep);
+}
+
+.tab {
+  min-height: 2.75rem;
+  border-radius: var(--radius-pill);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.tabActive {
+  background: var(--tk-paper);
+  color: var(--color-heading);
+  box-shadow: var(--shadow-xs);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+}
+
+.error {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--tk-coral-soft);
+  color: var(--tk-coral-strong);
+  font-weight: var(--weight-bold);
+}
+
+.details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  width: 100%;
+  margin: 0;
+  text-align: left;
+}
+
+.details dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--weight-bold);
+}
+
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.inlineLink {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}

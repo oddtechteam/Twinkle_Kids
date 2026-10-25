@@ -7,6 +7,7 @@ import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import { ProductImage } from "@/components/product/ProductImage";
 import { Dialog } from "@/components/ui/Dialog";
+import { Loader } from "@/components/ui/Loader";
 import { Price } from "@/components/ui/Price";
 import { apiFetch } from "@/lib/api/client";
 import type { ProductList, ProductSummary } from "@/lib/api/types";
@@ -115,7 +116,7 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
               </ul>
             </div>
           )}
-          {state.status === "loading" && <p className={styles.note}>Searching…</p>}
+          {state.status === "loading" && <Loader variant="inline" label="Finding little styles…" />}
           {state.status === "error" && (
             <p className={styles.note}>Search is unavailable right now. Please try again shortly.</p>
           )}

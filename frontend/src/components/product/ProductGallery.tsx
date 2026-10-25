@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Expand } from "lucide-react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 
+import { Dialog } from "@/components/ui/Dialog";
 import type { ProductImage as ProductImageData } from "@/lib/api/types";
 import { isRenderableImage } from "@/lib/catalog/adapters";
 import { ProductArt, artFor } from "./ProductArt";
@@ -19,6 +21,8 @@ interface GalleryProps {
 export function ProductGallery({ images, name, slug, focusVariantIds = [] }: GalleryProps) {
   const usable = images.filter((image) => isRenderableImage(image.url));
   const [active, setActive] = useState(0);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [magnified, setMagnified] = useState<{ x: number; y: number } | null>(null);
   const track = useRef<HTMLDivElement>(null);
 
   // Jump to the first image of the selected colour when the selection changes.
@@ -76,13 +80,90 @@ export function ProductGallery({ images, name, slug, focusVariantIds = [] }: Gal
               src={image.url}
               alt={image.alt_text ?? `${name} — image ${index + 1}`}
               fill
-              priority={index === 0}
+              loading={index === 0 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : undefined}
               sizes="(min-width: 1024px) 50vw, 100vw"
               className={styles.image}
             />
           </div>
         ))}
       </div>
+
+      <button
+        type="button"
+        className={styles.zoomButton}
+        onClick={() => {
+          setMagnified(null);
+          setZoomOpen(true);
+        }}
+        aria-haspopup="dialog"
+      >
+        <Expand aria-hidden="true" size={18} />
+        <span className="visually-hidden">Enlarge image {active + 1}</span>
+      </button>
+
+      <Dialog
+        open={zoomOpen}
+        onClose={() => setZoomOpen(false)}
+        title={`${name} — image ${active + 1} of ${usable.length}`}
+        hideTitle
+      >
+        <div className={styles.zoom}>
+          <button
+            type="button"
+            className={`${styles.zoomStage} ${magnified ? styles.zoomed : ""}`}
+            onClick={(event: MouseEvent<HTMLButtonElement>) => {
+              if (magnified) return setMagnified(null);
+              const box = event.currentTarget.getBoundingClientRect();
+              setMagnified({
+                x: ((event.clientX - box.left) / box.width) * 100,
+                y: ((event.clientY - box.top) / box.height) * 100,
+              });
+            }}
+            aria-label={magnified ? "Zoom out" : "Zoom in"}
+          >
+            {usable[active] && (
+              <Image
+                src={usable[active].url}
+                alt={usable[active].alt_text ?? `${name} — image ${active + 1}`}
+                fill
+                sizes="(min-width: 900px) 70vw, 100vw"
+                className={styles.zoomImage}
+                style={magnified ? { transformOrigin: `${magnified.x}% ${magnified.y}%` } : undefined}
+              />
+            )}
+          </button>
+          {usable.length > 1 && (
+            <div className={styles.zoomNav}>
+              <button
+                type="button"
+                className={styles.zoomArrow}
+                onClick={() => {
+                  setMagnified(null);
+                  select((active - 1 + usable.length) % usable.length);
+                }}
+                aria-label="Previous image"
+              >
+                <ChevronLeft aria-hidden="true" />
+              </button>
+              <span aria-live="polite">
+                {active + 1} / {usable.length}
+              </span>
+              <button
+                type="button"
+                className={styles.zoomArrow}
+                onClick={() => {
+                  setMagnified(null);
+                  select((active + 1) % usable.length);
+                }}
+                aria-label="Next image"
+              >
+                <ChevronRight aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
+      </Dialog>
 
       {usable.length > 1 && (
         <>

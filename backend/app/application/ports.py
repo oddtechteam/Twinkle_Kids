@@ -5,6 +5,7 @@ from typing import Protocol
 from uuid import UUID
 
 from app.application.dto.catalog import (
+    CatalogFacets,
     CategoryDetail,
     CategorySummary,
     CollectionSummary,
@@ -13,6 +14,8 @@ from app.application.dto.catalog import (
     ProductDetail,
     ProductFilters,
     ProductSummary,
+    ReviewSummary,
+    SitemapView,
 )
 
 
@@ -62,3 +65,13 @@ class CatalogQueries(Protocol):
         ...
 
     def images(self, media_ids: Sequence[UUID]) -> dict[UUID, ImageView]: ...
+
+    def facets(self, filters: ProductFilters) -> CatalogFacets:
+        """Size/colour/price options for the listing scope described by ``filters``."""
+        ...
+
+    def product_reviews(self, product_id: UUID, *, limit: int = 20) -> ReviewSummary:
+        """Approved reviews only, newest first."""
+        ...
+
+    def sitemap(self) -> SitemapView: ...

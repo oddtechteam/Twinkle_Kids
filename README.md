@@ -127,3 +127,7 @@ Open <http://localhost:3000> and <http://localhost:3000/status> (shows live API 
 
 No payment gateway and no customer-facing order tracking in this version. WhatsApp orders are
 recorded as enquiries that staff confirm — opening WhatsApp is not treated as a sent message.
+
+Admin Creadentials:
+Email - oddtechteam
+Password - Twinkle_Kids@26

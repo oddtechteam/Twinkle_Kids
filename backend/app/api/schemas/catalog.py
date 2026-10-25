@@ -51,6 +51,7 @@ class VariantOut(_Out):
     price: PriceOut
     in_stock: bool
     is_active: bool
+    low_stock: bool = False
 
 
 class AdminVariantOut(VariantOut):
@@ -69,6 +70,8 @@ class ProductSummaryOut(_Out):
     in_stock: bool
     primary_image: ImageOut | None
     badges: list[str] = []
+    secondary_image: ImageOut | None = None
+    category: CategoryRefOut | None = None
 
 
 class AdminProductSummaryOut(ProductSummaryOut):
@@ -133,6 +136,7 @@ class ProductDetailOut(_Out):
     seo_metadata: dict[str, Any]
     published_at: datetime | None
     badges: list[str] = []
+    collections: list[CategoryRefOut] = []  # published collections ({id, name, slug})
 
 
 class AdminProductDetailOut(ProductDetailOut):
@@ -207,3 +211,42 @@ class AdminCategoryDetailOut(BaseModel):
             seo_metadata=c.seo_metadata,
             products=[AdminProductSummaryOut.model_validate(p) for p in products],
         )
+
+
+class ColourOptionOut(_Out):
+    name: str
+    hex: str | None
+
+
+class FacetsOut(_Out):
+    sizes: list[str]
+    colours: list[ColourOptionOut]
+    min_price: Decimal | None
+    max_price: Decimal | None
+    total: int
+
+
+class ReviewOut(_Out):
+    rating: int
+    title: str | None
+    body: str | None
+    author: str | None
+    created_at: datetime
+
+
+class ReviewSummaryOut(_Out):
+    average: Decimal | None
+    count: int
+    items: list[ReviewOut]
+
+
+class SitemapEntryOut(_Out):
+    slug: str
+    updated_at: datetime | None
+
+
+class SitemapOut(_Out):
+    products: list[SitemapEntryOut]
+    categories: list[SitemapEntryOut]
+    collections: list[SitemapEntryOut]
+    pages: list[SitemapEntryOut]

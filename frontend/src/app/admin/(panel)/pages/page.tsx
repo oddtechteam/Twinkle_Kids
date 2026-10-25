@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
-import { AdminPage, type Column, DataTable, ErrorState, StatusPill, TextInput, adminStyles as styles } from "@/components/admin/Kit";
+import { AdminPage, type Column, DataTable, ErrorState, LoadingState, StatusPill, TextInput, adminStyles as styles } from "@/components/admin/Kit";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { adminApi } from "@/lib/admin/api";
@@ -56,6 +56,7 @@ export default function PagesListPage() {
       }
     >
       {list.error && <ErrorState message={list.error} onRetry={list.reload} />}
+      {list.loading && !list.data && <LoadingState label="Loading pages…" />}
       {list.data && <DataTable columns={columns} rows={list.data} rowKey={(p) => p.id} empty={<p className={styles.hint}>No pages yet.</p>} />}
       <Dialog open={creating} onClose={() => setCreating(false)} title="New page">
         <form onSubmit={create} className={styles.stack} noValidate>

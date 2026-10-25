@@ -149,6 +149,30 @@ src/app/              /, /shop, /category/[slug], /collections/[slug], /products
 - Products without photos render an illustrated, brand-coloured garment (`ProductArt`) — never
   placeholder stock photography.
 
+### Storefront commerce (Prompt 5)
+
+| Endpoint | Purpose |
+| -------- | ------- |
+| `GET /products/facets?category=&collection=&q=` | Size / colour / price options for a listing scope (filter panels) |
+| `GET /products/{slug}/reviews` | Approved reviews only |
+| `GET /collections`, `GET /content/shipping`, `GET /sitemap` | Published collections, active delivery bands, indexable slugs |
+| `GET/POST/PATCH/DELETE /cart…` | Server-side bag (guest `tk_cart` HttpOnly cookie or signed-in account; merged on sign-in) |
+| `POST /whatsapp-requests` | Records a WhatsApp order *request* and returns a `wa.me` link |
+
+- **Cart:** `cart_items` stores variant + quantity only. Every response re-resolves status, stock
+  and the effective variant price (`CartService` → `PricePair` / `calculate_totals`); totals and
+  the delivery fee (shipping rules) are backend-calculated. `unit_price_snapshot` (migration
+  `0005`) is used solely to tell shoppers a price changed since they added an item.
+- **WhatsApp:** lines are validated with `OrderLineSnapshot.capture` (status, stock, price), the
+  message is built from catalogue data plus the admin's message introduction, and the request is
+  stored as `initiated`. No stock is reserved, nothing is marked paid or sent.
+- **Frontend:** `lib/bag/` (provider + API calls), `components/bag/BagView`, `components/account/
+  AccountView` (existing `/auth` endpoints), `lib/catalog/filters.ts` (facets → filter options),
+  `/about` and `/contact` (CMS pages + store contact settings), `sitemap.ts` / `robots.ts`.
+  In production the development fixture never supplies homepage sections.
+- **Config:** `STOREFRONT_URL` (backend, links in WhatsApp messages), `NEXT_PUBLIC_SITE_URL`
+  (frontend canonical / OG / sitemap), optional `MEDIA_PUBLIC_BASE_URL` for a media CDN.
+
 ## Brand direction
 
 Palette from the poster: **navy** (`--tk-navy-*`), **warm ivory** (`--tk-ivory-*`), **blush pink**

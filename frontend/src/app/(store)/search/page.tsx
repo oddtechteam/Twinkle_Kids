@@ -5,7 +5,8 @@ import { Suspense } from "react";
 import { ListingSkeleton, ListingView } from "@/components/catalog/ListingView";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Form";
-import { listProducts } from "@/lib/catalog/api";
+import { getFacets, listProducts } from "@/lib/catalog/api";
+import { buildFilterOptions } from "@/lib/catalog/filters";
 import { parseListingQuery } from "@/lib/catalog/query";
 import { getSiteContent } from "@/lib/content";
 import styles from "./page.module.css";
@@ -57,7 +58,7 @@ async function SearchResults({ searchParams }: Pick<PageProps<"/search">, "searc
     );
   }
 
-  const result = await listProducts(query);
+  const [result, facets] = await Promise.all([listProducts(query), getFacets({ q: query.q })]);
   return (
     <ListingView
       title={`Results for “${query.q}”`}
@@ -66,7 +67,7 @@ async function SearchResults({ searchParams }: Pick<PageProps<"/search">, "searc
       basePath="/search"
       query={query}
       result={result}
-      options={content.catalog}
+      options={buildFilterOptions(facets)}
       headerExtra={<SearchForm defaultValue={query.q} />}
       emptyMessage={{
         title: `No styles match “${query.q}”`,

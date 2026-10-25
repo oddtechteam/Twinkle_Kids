@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { GroupForm, collectionPayload, emptyGroup } from "@/components/admin/CatalogGroupForm";
-import { AdminPage, type Column, DataTable, ErrorState, StatusPill, adminStyles as styles } from "@/components/admin/Kit";
+import { AdminPage, type Column, DataTable, ErrorState, LoadingState, StatusPill, adminStyles as styles } from "@/components/admin/Kit";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { adminApi } from "@/lib/admin/api";
@@ -65,6 +65,7 @@ export default function CollectionsPage() {
       }
     >
       {list.error && <ErrorState message={list.error} onRetry={list.reload} />}
+      {list.loading && !list.data && <LoadingState label="Loading collections…" />}
       {list.data && <DataTable columns={columns} rows={list.data} rowKey={(c) => c.id} empty={<p className={styles.hint}>No collections yet.</p>} />}
       <Dialog open={creating} onClose={() => setCreating(false)} title="New collection">
         <GroupForm

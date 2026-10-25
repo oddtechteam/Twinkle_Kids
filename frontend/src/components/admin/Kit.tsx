@@ -3,7 +3,7 @@
 /** Admin building blocks: page header, cards, fields, table, pills, confirm dialog, states. */
 
 import Link from "next/link";
-import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, Loader2, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, GripVertical, X } from "lucide-react";
 import {
   type ComponentProps,
   type ReactNode,
@@ -14,6 +14,7 @@ import {
 import { type Crumb, Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
+import { Loader } from "@/components/ui/Loader";
 import styles from "./admin.module.css";
 
 export { styles as adminStyles };
@@ -423,14 +424,9 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill tone={tone}>{status}</Pill>;
 }
 
-export function LoadingState({ label = "Loading…" }: { label?: string }) {
-  return (
-    <div className={styles.center} role="status">
-      <span style={{ display: "inline-flex", gap: "var(--space-2)", alignItems: "center" }}>
-        <Loader2 size={18} aria-hidden="true" style={{ animation: "spin 1s linear infinite" }} /> {label}
-      </span>
-    </div>
-  );
+/** Branded loader for admin data that is genuinely loading (fades in after a short delay). */
+export function LoadingState({ label = "Getting things ready…", inline = false }: { label?: string; inline?: boolean }) {
+  return <Loader label={label} variant={inline ? "inline" : "page"} />;
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {

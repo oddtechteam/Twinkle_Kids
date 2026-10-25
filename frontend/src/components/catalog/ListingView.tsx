@@ -9,7 +9,7 @@ import { EmptyState, Skeleton } from "@/components/ui/Feedback";
 import { Motif } from "@/components/ui/Motif";
 import type { ApiResult, ProductList } from "@/lib/api/types";
 import { cardFromSummary } from "@/lib/catalog/adapters";
-import { type ListingQuery, activeFilterCount, listingHref } from "@/lib/catalog/query";
+import { type ListingQuery, CLEARED_FILTERS, activeFilterCount, listingHref } from "@/lib/catalog/query";
 import { formatMoney, plural } from "@/lib/format";
 import { type FilterOptions, FilterDrawer, FilterSidebar, SortSelect } from "./ListingFilters";
 import { Pagination } from "./Pagination";
@@ -91,7 +91,7 @@ export function ListingView({
             </div>
           </div>
 
-          <ActiveFilters basePath={basePath} query={query} />
+          <ActiveFilters basePath={basePath} query={query} options={options} />
 
           {!result.ok ? (
             <EmptyState
@@ -114,7 +114,7 @@ export function ListingView({
               }
               action={
                 filtered ? (
-                  <ButtonLink href={listingHref(basePath, { ...query, sizes: [], colours: [], minPrice: null, maxPrice: null, inStock: false })}>
+                  <ButtonLink href={listingHref(basePath, query, CLEARED_FILTERS)}>
                     Clear filters
                   </ButtonLink>
                 ) : (
@@ -134,8 +134,16 @@ export function ListingView({
   );
 }
 
-function ActiveFilters({ basePath, query }: { basePath: string; query: ListingQuery }) {
+function ActiveFilters({ basePath, query, options }: { basePath: string; query: ListingQuery; options: FilterOptions }) {
+  const named = (list: { label: string; slug: string }[], slug: string) =>
+    list.find((item) => item.slug === slug)?.label ?? slug;
   const chips: { label: string; href: string }[] = [
+    ...(query.category
+      ? [{ label: named(options.categories, query.category), href: listingHref(basePath, query, { category: null }) }]
+      : []),
+    ...(query.collection
+      ? [{ label: named(options.collections, query.collection), href: listingHref(basePath, query, { collection: null }) }]
+      : []),
     ...query.sizes.map((size) => ({
       label: `Size ${size}`,
       href: listingHref(basePath, query, { sizes: query.sizes.filter((s) => s !== size) }),
@@ -169,6 +177,13 @@ function ActiveFilters({ basePath, query }: { basePath: string; query: ListingQu
           </Link>
         </li>
       ))}
+      {chips.length > 1 && (
+        <li>
+          <Link href={listingHref(basePath, query, CLEARED_FILTERS)} className={styles.clearAll} scroll={false}>
+            Clear all
+          </Link>
+        </li>
+      )}
     </ul>
   );
 }

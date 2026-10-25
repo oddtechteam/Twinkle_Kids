@@ -55,7 +55,7 @@ export interface HeroSection {
   primaryCta?: LinkItem;
   secondaryCta?: LinkItem;
   trust: { icon: IconName; label: string }[];
-  /** Short floating messages around the interactive stage (shown when no photo is set). */
+  /** Legacy: messages for the retired 3D stage. Kept so stored CMS data still parses; not rendered. */
   messages?: HeroMessage[];
   image: MediaRef | null; // desktop
   mobileImage?: MediaRef | null;
@@ -226,11 +226,11 @@ export interface SiteContent {
   announcement: Announcement;
   navigation: { primary: LinkItem[]; mobile: LinkItem[] };
   homepage: { sections: HomepageSection[] };
-  catalog: {
-    filterSizes: string[];
-    filterColours: { name: string; hex: string }[];
-    priceBands: { label: string; min: string | null; max: string | null }[];
-    purchaseNotes: { icon: IconName; text: string }[];
+  /** Store commerce settings from the CMS (never hardcoded business rules). */
+  commerce: {
+    whatsappOrdering: boolean;
+    guestCheckout: boolean;
+    currency: string;
   };
   footer: {
     blurb: string;

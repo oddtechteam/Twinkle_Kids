@@ -44,3 +44,16 @@ export function EmptyState({
     </div>
   );
 }
+
+/** Text page placeholder (CMS pages, about, contact): title + paragraph lines, no layout jump. */
+export function ContentSkeleton() {
+  return (
+    <div className={`container-narrow ${styles.contentSkeleton}`} aria-busy="true" aria-label="Loading page">
+      <Skeleton width="9rem" height="0.9rem" />
+      <Skeleton width="min(24rem, 75%)" height="2.75rem" radius="var(--radius-pill)" />
+      {["100%", "96%", "88%", "100%", "64%"].map((width, index) => (
+        <Skeleton key={index} width={width} height="1rem" />
+      ))}
+    </div>
+  );
+}

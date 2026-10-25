@@ -102,8 +102,11 @@
   color: var(--tk-danger);
 }
 
-.stockRow:empty {
-  display: none;
+.stockRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .actions {
@@ -199,4 +202,36 @@
   margin-top: var(--space-3);
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+}
+
+.sku {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.sku span {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.quantityRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.secondaryActions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (min-width: 520px) {
+  .secondaryActions {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
 }

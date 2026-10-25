@@ -9,6 +9,7 @@ import {
   ConfirmDialog,
   DataTable,
   ErrorState,
+  LoadingState,
   SelectInput,
   TextArea,
   TextInput,
@@ -162,6 +163,7 @@ export default function SizeChartsPage() {
       }
     >
       {charts.error && <ErrorState message={charts.error} onRetry={charts.reload} />}
+      {charts.loading && !charts.data && <LoadingState label="Loading size charts…" />}
       {charts.data && <DataTable columns={columns} rows={charts.data} rowKey={(c) => c.id} empty={<p className={styles.hint}>No size charts yet.</p>} />}
       {editing !== null && (
         <ChartDialog

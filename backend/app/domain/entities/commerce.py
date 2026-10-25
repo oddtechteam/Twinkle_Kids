@@ -1,6 +1,8 @@
-"""Order-line snapshots: what a customer bought, frozen at purchase time."""
+"""Order-line snapshots (what a customer bought, frozen at purchase time), carts and
+WhatsApp order requests."""
 
 from dataclasses import dataclass
+from decimal import Decimal
 from uuid import UUID
 
 from app.domain.entities.catalog import Product, ProductVariant
@@ -66,3 +68,58 @@ def _find_variant(product: Product, variant_id: UUID) -> ProductVariant:
         if variant.id == variant_id:
             return variant
     raise DomainValidationError("The selected option does not belong to this product.")
+
+
+# --- Cart -------------------------------------------------------------------------------------
+
+MAX_CART_LINE_QUANTITY = 99  # matches the cart_items quantity CHECK constraint
+MAX_CART_LINES = 50
+
+
+@dataclass(frozen=True, slots=True)
+class CartItem:
+    """A cart line holds identity and quantity only; prices are resolved from the catalogue."""
+
+    id: UUID
+    variant_id: UUID
+    product_id: UUID
+    quantity: int
+    unit_price_snapshot: Decimal | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Cart:
+    id: UUID
+    user_id: UUID | None
+    items: tuple[CartItem, ...] = ()
+
+    def item(self, item_id: UUID) -> CartItem | None:
+        return next((i for i in self.items if i.id == item_id), None)
+
+    def item_for_variant(self, variant_id: UUID) -> CartItem | None:
+        return next((i for i in self.items if i.variant_id == variant_id), None)
+
+
+def validate_cart_quantity(quantity: int) -> int:
+    if isinstance(quantity, bool) or not isinstance(quantity, int):
+        raise DomainValidationError("Quantity must be a whole number.")
+    if not 1 <= quantity <= MAX_CART_LINE_QUANTITY:
+        raise DomainValidationError(f"Quantity must be between 1 and {MAX_CART_LINE_QUANTITY}.")
+    return quantity
+
+
+# --- WhatsApp order requests ------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class WhatsAppOrderRequest:
+    """What the customer was handed in a WhatsApp link. Not an order, not proof of sending."""
+
+    id: UUID
+    reference: str
+    user_id: UUID | None
+    message_text: str
+    lines: tuple[OrderLineSnapshot, ...]
+    estimated_subtotal: Decimal
+    customer_name: str | None = None
+    customer_phone: str | None = None

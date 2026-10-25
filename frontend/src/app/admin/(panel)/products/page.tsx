@@ -10,6 +10,7 @@ import {
   type Column,
   DataTable,
   ErrorState,
+  LoadingState,
   StatusPill,
   adminStyles as styles,
 } from "@/components/admin/Kit";
@@ -108,13 +109,14 @@ export default function ProductsPage() {
           </select>
         </div>
         {list.error && <ErrorState message={list.error} onRetry={list.reload} />}
+        {list.loading && !list.data && <LoadingState label="Loading products…" />}
         {list.data && (
           <>
             <DataTable
               columns={columns}
               rows={list.data.items}
               rowKey={(p) => p.id}
-              empty={<p className={styles.hint}>{list.loading ? "Loading…" : "No products match."}</p>}
+              empty={list.loading ? <LoadingState inline label="Loading products…" /> : <p className={styles.hint}>No products match.</p>}
             />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span className={styles.hint}>

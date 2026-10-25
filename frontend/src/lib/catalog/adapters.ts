@@ -9,6 +9,10 @@ export interface CardProduct {
   priceVaries: boolean;
   inStock: boolean;
   image: ProductImage | null;
+  /** Second photo revealed on hover (desktop pointers only). */
+  hoverImage: ProductImage | null;
+  /** Category label shown above the name when useful. */
+  label: string | null;
   badges: string[];
 }
 
@@ -21,6 +25,8 @@ export function cardFromSummary(product: ProductSummary): CardProduct {
     priceVaries: product.price_varies,
     inStock: product.in_stock,
     image: product.primary_image,
+    hoverImage: product.secondary_image ?? null,
+    label: product.category?.name ?? null,
     badges: product.badges ?? [],
   };
 }
@@ -34,6 +40,8 @@ export function cardFromDetail(product: ProductDetail): CardProduct {
     priceVaries: sellings.size > 1,
     inStock: product.in_stock,
     image: product.images[0] ?? null,
+    hoverImage: product.images[1] ?? null,
+    label: product.categories[0]?.name ?? null,
     badges: product.badges ?? [],
   };
 }

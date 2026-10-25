@@ -10,8 +10,11 @@ from app.api.schemas.catalog import (
     CategoryDetailOut,
     CategoryOut,
     CategoryRefOut,
+    FacetsOut,
     ProductDetailOut,
     ProductListOut,
+    ReviewSummaryOut,
+    SitemapOut,
 )
 from app.application.dto.catalog import MAX_PAGE_SIZE, ProductFilters, ProductSort
 
@@ -51,6 +54,32 @@ def list_products(
         sort=sort,
     )
     return ProductListOut.of(reader.list_products(filters))
+
+
+@router.get("/products/facets", response_model=FacetsOut)
+def product_facets(
+    reader: CatalogReaderDep,
+    category: Annotated[str | None, Query(max_length=160)] = None,
+    collection: Annotated[str | None, Query(max_length=160)] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
+) -> FacetsOut:
+    """Size, colour and price options available in a listing scope (for filter panels)."""
+    facets = reader.facets(
+        ProductFilters(category_slug=category, collection_slug=collection, search=q)
+    )
+    return FacetsOut.model_validate(facets)
+
+
+@router.get("/products/{slug}/reviews", response_model=ReviewSummaryOut)
+def product_reviews(slug: str, reader: CatalogReaderDep) -> ReviewSummaryOut:
+    """Approved customer reviews only."""
+    return ReviewSummaryOut.model_validate(reader.reviews(slug))
+
+
+@router.get("/sitemap", response_model=SitemapOut)
+def sitemap(reader: CatalogReaderDep) -> SitemapOut:
+    """Indexable storefront slugs: active products/categories, published collections/pages."""
+    return SitemapOut.model_validate(reader.sitemap())
 
 
 @router.get("/products/{slug}", response_model=ProductDetailOut)

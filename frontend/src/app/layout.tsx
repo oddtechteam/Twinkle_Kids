@@ -4,6 +4,7 @@ import { Nunito, Nunito_Sans } from "next/font/google";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { getSiteContent } from "@/lib/content";
 import { themeCss } from "@/lib/content/theme";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const nunito = Nunito({
@@ -23,6 +24,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const { brand, seo } = await getSiteContent();
   const suffix = seo.titleSuffix || brand.name;
   return {
+    // Relative canonical / Open Graph URLs resolve against the public storefront origin.
+    metadataBase: new URL(siteUrl()),
     title: { default: `${brand.name} — ${brand.tagline}`, template: `%s | ${suffix}` },
     description: seo.description || brand.description,
     applicationName: brand.name,

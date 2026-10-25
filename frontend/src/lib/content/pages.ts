@@ -32,3 +32,12 @@ export async function getPublishedPage(slug: string): Promise<PublishedPage | nu
     return "unavailable";
   }
 }
+
+/** The first published page among candidate slugs (e.g. "about" or "about-us"), else null. */
+export async function findPublishedPage(slugs: string[]): Promise<PublishedPage | null> {
+  for (const slug of slugs) {
+    const page = await getPublishedPage(slug);
+    if (page && page !== "unavailable") return page;
+  }
+  return null;
+}

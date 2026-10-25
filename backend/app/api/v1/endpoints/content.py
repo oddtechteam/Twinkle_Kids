@@ -2,11 +2,18 @@
 
 from fastapi import APIRouter
 
-from app.api.deps import CatalogReaderDep, PageServiceDep, PublicHomepageDep, PublicSiteDep
+from app.api.deps import (
+    CatalogReaderDep,
+    PageServiceDep,
+    PublicHomepageDep,
+    PublicSiteDep,
+    ShippingServiceDep,
+)
 from app.api.schemas.content import (
     CollectionOut,
     PublicPageOut,
     PublicSiteOut,
+    PublicShippingRuleOut,
     PublishedHomepageOut,
 )
 
@@ -29,6 +36,18 @@ def homepage(reader: PublicHomepageDep) -> PublishedHomepageOut:
 @router.get("/content/pages/{slug}", response_model=PublicPageOut)
 def page(slug: str, service: PageServiceDep) -> PublicPageOut:
     return PublicPageOut.model_validate(service.published(slug))
+
+
+@router.get("/content/shipping", response_model=list[PublicShippingRuleOut])
+def shipping(service: ShippingServiceDep) -> list[PublicShippingRuleOut]:
+    """Active shipping fee bands, so product pages can show delivery charges from settings."""
+    return [PublicShippingRuleOut.model_validate(r) for r in service.list() if r.is_active]
+
+
+@router.get("/collections", response_model=list[CollectionOut])
+def collections(reader: CatalogReaderDep) -> list[CollectionOut]:
+    """Published collections in display order."""
+    return [CollectionOut.model_validate(c) for c in reader.collections()]
 
 
 @router.get("/collections/{slug}", response_model=CollectionOut)

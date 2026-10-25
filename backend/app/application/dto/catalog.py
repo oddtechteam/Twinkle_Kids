@@ -68,6 +68,8 @@ class VariantView:
     in_stock: bool
     stock_quantity: int | None  # only populated for admin views
     is_active: bool
+    # Public stock signal: tracked, in stock and at or below the product's low-stock threshold.
+    low_stock: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +85,15 @@ class ProductSummary:
     status: ProductStatus
     published_at: datetime | None
     badges: list[str] = field(default_factory=list)
+    secondary_image: ImageView | None = None  # second gallery image (card hover)
+    category: CategoryRef | None = None  # primary (or first active) category
+
+
+@dataclass(frozen=True, slots=True)
+class CollectionRef:
+    id: UUID
+    name: str
+    slug: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +127,7 @@ class ProductDetail:
     badges: list[str] = field(default_factory=list)
     size_chart_id: UUID | None = None
     collection_ids: list[UUID] = field(default_factory=list)  # admin view only
+    collections: list[CollectionRef] = field(default_factory=list)  # published, storefront view
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,3 +192,56 @@ class Page[T]:
     @property
     def pages(self) -> int:
         return max(1, -(-self.total // self.page_size))
+
+
+@dataclass(frozen=True, slots=True)
+class ColourOption:
+    name: str
+    hex: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogFacets:
+    """Filter options available within a listing scope (category / collection / search).
+
+    Option lists ignore the size, colour, price and availability filters themselves, so
+    choosing one option never hides its siblings.
+    """
+
+    sizes: list[str]
+    colours: list[ColourOption]
+    min_price: Decimal | None
+    max_price: Decimal | None
+    total: int
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewView:
+    rating: int
+    title: str | None
+    body: str | None
+    author: str | None  # first name only
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewSummary:
+    average: Decimal | None
+    count: int
+    items: list[ReviewView]
+
+
+@dataclass(frozen=True, slots=True)
+class SitemapEntry:
+    slug: str
+    updated_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class SitemapView:
+    """Public, indexable URLs only: active products/categories, published collections/pages."""
+
+    products: list[SitemapEntry]
+    categories: list[SitemapEntry]
+    collections: list[SitemapEntry]
+    pages: list[SitemapEntry]

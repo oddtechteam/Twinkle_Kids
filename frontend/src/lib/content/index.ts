@@ -14,6 +14,21 @@ import { type PublicSite, type PublishedHomepage, mapSite } from "./cms";
 import { developmentContent } from "./fixtures/development-content";
 import type { HomepageSection, SiteContent } from "./types";
 
+/**
+ * Outside development the fixture only supplies the store shell (name, safe links). Its
+ * homepage is never shown in production: an unreachable or unpublished CMS renders an honest
+ * empty state instead of editorial copy nobody approved.
+ */
+const isDevelopment = process.env.NODE_ENV !== "production";
+
+function shellOnly(content: SiteContent): SiteContent {
+  return {
+    ...content,
+    announcement: { ...content.announcement, visible: false },
+    homepage: { sections: [] },
+  };
+}
+
 export const SITE_CONTENT_TAG = "site-content";
 
 export async function getSiteContent(): Promise<SiteContent> {
@@ -26,9 +41,10 @@ export async function getSiteContent(): Promise<SiteContent> {
       apiFetch<PublicSite>("/content/site"),
       apiFetch<PublishedHomepage>("/content/homepage").catch(() => null),
     ]);
-    return mapSite(site, developmentContent, homepage);
+    const fallback = isDevelopment ? developmentContent : shellOnly(developmentContent);
+    return mapSite(site, fallback, homepage);
   } catch {
-    return developmentContent;
+    return isDevelopment ? developmentContent : shellOnly(developmentContent);
   }
 }
 

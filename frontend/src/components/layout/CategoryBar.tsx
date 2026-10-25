@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { listCategories, topLevel } from "@/lib/catalog/api";
+import { listCategories, listCollections, topLevel } from "@/lib/catalog/api";
 import type { LinkItem } from "@/lib/content/types";
 import styles from "./CategoryBar.module.css";
 
@@ -51,23 +51,42 @@ export function CategoryBarFallback({ links }: { links: LinkItem[] }) {
   );
 }
 
-/** Category links for the mobile menu drawer. */
+/** Category and collection links for the mobile menu drawer (both from the catalogue API). */
 export async function CategoryMenuList() {
-  const result = await listCategories();
-  const categories = result.ok ? topLevel(result.data) : [];
-  if (categories.length === 0) return null;
+  const [categoryResult, collectionResult] = await Promise.all([listCategories(), listCollections()]);
+  const categories = categoryResult.ok ? topLevel(categoryResult.data) : [];
+  const collections = collectionResult.ok ? collectionResult.data : [];
+  if (categories.length === 0 && collections.length === 0) return null;
   return (
-    <div className={styles.menu}>
-      <p className={styles.menuTitle}>Shop by category</p>
-      <ul className={styles.menuList}>
-        {categories.map((category) => (
-          <li key={category.id}>
-            <Link href={`/category/${category.slug}`} className={styles.menuLink}>
-              {category.name}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      {categories.length > 0 && (
+        <div className={styles.menu}>
+          <p className={styles.menuTitle}>Shop by category</p>
+          <ul className={styles.menuList}>
+            {categories.map((category) => (
+              <li key={category.id}>
+                <Link href={`/category/${category.slug}`} className={styles.menuLink}>
+                  {category.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {collections.length > 0 && (
+        <div className={styles.menu}>
+          <p className={styles.menuTitle}>Collections</p>
+          <ul className={styles.menuList}>
+            {collections.map((collection) => (
+              <li key={collection.id}>
+                <Link href={`/collections/${collection.slug}`} className={styles.menuLink}>
+                  {collection.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
   );
 }

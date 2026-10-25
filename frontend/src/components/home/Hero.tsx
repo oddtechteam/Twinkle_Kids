@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
 
@@ -6,16 +5,15 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Motif } from "@/components/ui/Motif";
 import { isRenderableImage } from "@/lib/catalog/adapters";
-import { HERO_MESSAGES } from "@/lib/content/fixtures/development-content";
 import type { HeroSection } from "@/lib/content/types";
 import styles from "./Hero.module.css";
-import { HeroStage } from "./hero/HeroStage";
+import { FloatingLookbook } from "./hero/FloatingLookbook";
 
 const reveal = (index: number) => ({ "--reveal-index": index }) as CSSProperties;
 
 /**
- * Editorial split hero. Every word, image, link and theme comes from the CMS section. Without a
- * configured photo the right side shows the interactive podium stage.
+ * Editorial split hero: CMS copy on one side, the Floating Lookbook on the other. Every word,
+ * link and theme comes from the CMS section; a configured photo replaces the lookbook's art.
  */
 export function Hero({ section }: { section: HeroSection }) {
   const { headline } = section;
@@ -56,10 +54,10 @@ export function Hero({ section }: { section: HeroSection }) {
               </span>
             )}
           </h1>
-          <p className={styles.body} data-reveal style={reveal(4)}>
+          <p className={styles.body} data-reveal style={reveal(3)}>
             {section.body}
           </p>
-          <div className={styles.ctas} data-reveal style={reveal(5)}>
+          <div className={styles.ctas} data-reveal style={reveal(4)}>
             {section.primaryCta && (
               <ButtonLink
                 href={section.primaryCta.href}
@@ -78,7 +76,7 @@ export function Hero({ section }: { section: HeroSection }) {
             )}
           </div>
           {section.trust.length > 0 && (
-            <ul className={styles.trust} data-reveal style={reveal(6)}>
+            <ul className={styles.trust} data-reveal style={reveal(5)}>
               {section.trust.map((item) => (
                 <li key={item.label}>
                   <span className={styles.trustIcon}>
@@ -91,41 +89,8 @@ export function Hero({ section }: { section: HeroSection }) {
           )}
         </div>
 
-        <div className={`${styles.visual} ${desktop ? "" : styles.stageVisual}`} data-reveal style={reveal(3)}>
-          {desktop ? (
-            <div className={styles.photoFrame}>
-              {/* Art-directed crops: the CMS can supply a dedicated mobile image. */}
-                <Image
-                  src={desktop.src}
-                  alt={desktop.alt}
-                  fill
-                  priority
-                  sizes="(min-width: 960px) 46vw, 100vw"
-                  className={`${styles.photo} ${mobile && mobile !== desktop ? styles.desktopOnly : ""}`}
-                  style={{ objectPosition: desktop.focal ?? "50% 35%" }}
-                />
-                {mobile && mobile !== desktop && (
-                  <Image
-                    src={mobile.src}
-                    alt={mobile.alt}
-                    fill
-                    priority
-                    sizes="100vw"
-                    className={`${styles.photo} ${styles.mobileOnly}`}
-                    style={{ objectPosition: mobile.focal ?? "50% 35%" }}
-                  />
-                )}
-            </div>
-          ) : (
-            <HeroStage messages={section.messages ?? HERO_MESSAGES} />
-          )}
-          {desktop && (
-            <>
-              <Motif kind="star" size={26} twinkle className={styles.floatA} />
-              <Motif kind="heart" size={18} className={styles.floatB} />
-              <Motif kind="star" size={14} twinkle className={styles.floatC} style={{ animationDelay: "1.4s" }} />
-            </>
-          )}
+        <div className={styles.visual}>
+          <FloatingLookbook image={desktop} mobileImage={mobile} />
         </div>
       </div>
     </section>

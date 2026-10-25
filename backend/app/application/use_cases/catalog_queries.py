@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.application.dto.catalog import (
     MAX_PAGE_SIZE,
+    CatalogFacets,
     CategoryDetail,
     CategorySummary,
     CollectionSummary,
@@ -12,6 +13,8 @@ from app.application.dto.catalog import (
     ProductDetail,
     ProductFilters,
     ProductSummary,
+    ReviewSummary,
+    SitemapView,
 )
 from app.application.ports import CatalogQueries
 from app.domain.errors import DomainValidationError, NotFoundError
@@ -33,6 +36,22 @@ class CatalogReader:
         ):
             raise DomainValidationError("Minimum price cannot exceed maximum price.")
         return self._queries.list_products(filters)
+
+    def facets(self, filters: ProductFilters) -> CatalogFacets:
+        return self._queries.facets(filters)
+
+    def reviews(self, slug: str) -> ReviewSummary:
+        detail = self._queries.get_product(slug=slug)
+        if detail is None:
+            raise NotFoundError("Product not found.")
+        return self._queries.product_reviews(detail.id)
+
+    def sitemap(self) -> SitemapView:
+        return self._queries.sitemap()
+
+    def collections(self) -> Sequence[CollectionSummary]:
+        """Published collections in display order (storefront filters and navigation)."""
+        return self._queries.list_collections(published_only=True)
 
     def product(self, slug: str) -> ProductDetail:
         detail = self._queries.get_product(slug=slug)

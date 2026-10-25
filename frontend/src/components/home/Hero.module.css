@@ -78,7 +78,7 @@
 
 @media (min-width: 960px) {
   .grid {
-    grid-template-columns: 1.05fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
   }
 
   .flip .copy {
@@ -210,6 +210,12 @@
   background: color-mix(in srgb, var(--tk-paper) 55%, transparent);
 }
 
+/* Secondary CTA warms to a light blush on hover. */
+.ctas .secondary {
+  --btn-bg-hover: var(--tk-blush-soft);
+  --btn-fg-hover: var(--tk-navy-ink);
+}
+
 .navy .secondary {
   --btn-border: var(--tk-navy-mist);
   --btn-fg: var(--tk-paper);
@@ -239,85 +245,18 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--tk-paper);
+  background: var(--tk-blush-soft);
   color: var(--color-accent);
-  box-shadow: var(--shadow-xs);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tk-blush-deep) 45%, transparent);
 }
 
-/* ---- Visual ---- */
+/* ---- Visual (Floating Lookbook) ---- */
 
 .visual {
   position: relative;
   width: 100%;
-  max-width: 34rem;
+  max-width: 42rem;
   justify-self: center;
-}
-
-/* The interactive stage gets more room than a photo frame. */
-.stageVisual {
-  max-width: 40rem;
-}
-
-@media (min-width: 960px) {
-  .stageVisual {
-    margin-block: calc(var(--space-6) * -1);
-  }
-}
-
-.photoFrame {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  border-radius: var(--radius-arch);
-  overflow: hidden;
-  box-shadow: var(--shadow-lg);
-  outline: 10px solid color-mix(in srgb, var(--tk-paper) 70%, transparent);
-}
-
-.photo {
-  object-fit: cover;
-  transition: transform 1.2s var(--ease-out);
-}
-
-.visual:hover .photo {
-  transform: scale(1.03);
-}
-
-.mobileOnly {
-  display: none;
-}
-
-@media (max-width: 639px) {
-  .desktopOnly {
-    display: none;
-  }
-
-  .mobileOnly {
-    display: block;
-  }
-}
-
-.floatA,
-.floatB,
-.floatC {
-  position: absolute;
-}
-
-.floatA {
-  top: -2%;
-  right: -2%;
-  color: var(--tk-gold);
-}
-
-.floatB {
-  bottom: 18%;
-  right: -3%;
-  color: var(--tk-coral);
-}
-
-.floatC {
-  bottom: -2%;
-  left: 44%;
-  color: var(--tk-gold);
 }
 
 /* ---- Mobile composition ---- */
@@ -335,11 +274,7 @@
   }
 
   .visual {
-    max-width: 26rem;
-  }
-
-  .stageVisual {
-    max-width: 34rem;
+    max-width: 36rem;
   }
 }
 
@@ -371,13 +306,20 @@
     font-size: var(--text-sm);
   }
 
+  .visual {
+    width: calc(100% + var(--space-4));
+    margin-inline: calc(var(--space-2) * -1);
+  }
+
   .trust {
     gap: var(--space-2) var(--space-4);
     font-size: var(--text-xs);
   }
+}
 
-  .photoFrame {
-    aspect-ratio: 5 / 4;
-    border-radius: var(--radius-xl);
+/* Very narrow phones: one CTA per row keeps both labels on a single line. */
+@media (max-width: 420px) {
+  .ctas {
+    grid-template-columns: 1fr;
   }
 }

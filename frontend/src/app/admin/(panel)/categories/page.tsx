@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { GroupForm, categoryPayload, emptyGroup } from "@/components/admin/CatalogGroupForm";
-import { AdminPage, type Column, DataTable, ErrorState, Pill, Toggle, adminStyles as styles } from "@/components/admin/Kit";
+import { AdminPage, type Column, DataTable, ErrorState, LoadingState, Pill, Toggle, adminStyles as styles } from "@/components/admin/Kit";
 import { MediaThumb } from "@/components/admin/Pickers";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -68,6 +68,7 @@ export default function CategoriesPage() {
       }
     >
       {list.error && <ErrorState message={list.error} onRetry={list.reload} />}
+      {list.loading && !list.data && <LoadingState label="Loading categories…" />}
       {list.data && <DataTable columns={columns} rows={ordered} rowKey={(c) => c.id} empty={<p className={styles.hint}>No categories yet.</p>} />}
       <Dialog open={creating} onClose={() => setCreating(false)} title="New category">
         <GroupForm

@@ -1,0 +1,44 @@
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid color-mix(in srgb, var(--tk-navy) 22%, transparent);
+  border-radius: var(--radius-pill);
+  background: var(--tk-paper);
+}
+
+.button {
+  display: grid;
+  place-items: center;
+  width: 2.75rem; /* 44px touch target */
+  height: 2.75rem;
+  border-radius: var(--radius-pill);
+  color: var(--tk-navy);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--tk-blush-soft);
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.value {
+  min-width: 2rem;
+  font-family: var(--font-heading);
+  font-weight: var(--weight-heavy);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.sm .button {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.sm .value {
+  min-width: 1.75rem;
+  font-size: var(--text-sm);
+}

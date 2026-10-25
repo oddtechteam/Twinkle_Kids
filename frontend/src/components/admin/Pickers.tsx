@@ -11,7 +11,7 @@ import { useMutation, useResource } from "@/lib/admin/hooks";
 import type { AdminProductSummary, MediaAsset } from "@/lib/admin/types";
 import { isRenderableImage } from "@/lib/catalog/adapters";
 import { formatMoney } from "@/lib/format";
-import { ErrorState, adminStyles as styles } from "./Kit";
+import { ErrorState, LoadingState, adminStyles as styles } from "./Kit";
 
 export const MEDIA_PURPOSES = [
   { value: "product_image", label: "Product image" },
@@ -79,7 +79,7 @@ export function MediaPicker({
           </Button>
         </div>
         {media.error && <ErrorState message={media.error} onRetry={media.reload} />}
-        {media.loading && <p className={styles.hint}>Loading images…</p>}
+        {media.loading && <LoadingState inline label="Loading images…" />}
         {media.data && media.data.length === 0 && <p className={styles.hint}>No images yet — upload one.</p>}
         <div className={styles.mediaGrid}>
           {media.data?.map((asset) => (

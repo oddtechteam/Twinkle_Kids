@@ -32,6 +32,9 @@ export interface PublicSite {
   contact: { email: string | null; phone: string | null; whatsapp: string | null; address: string | null; hours: string | null };
   social_links: Partial<Record<"instagram" | "facebook" | "youtube" | "pinterest", string | null>>;
   default_product_sort: ProductSort;
+  currency_code: string;
+  guest_checkout_enabled: boolean;
+  whatsapp_ordering_enabled: boolean;
   seo: { title_suffix?: string | null; default_description?: string | null };
   og_image: ProductImage | null;
   menus: Record<"header" | "footer" | "mobile", PublicLink[]>;
@@ -306,6 +309,12 @@ export function mapSite(site: PublicSite, fallback: SiteContent, homepage: Publi
       ogImageUrl: site.og_image?.url ?? null,
     },
     defaultSort: site.default_product_sort,
+    commerce: {
+      // The public contact WhatsApp number is only exposed when ordering is enabled.
+      whatsappOrdering: Boolean(site.whatsapp_ordering_enabled && site.contact.whatsapp),
+      guestCheckout: site.guest_checkout_enabled,
+      currency: site.currency_code || "INR",
+    },
     announcement: {
       visible: Boolean(announcement.enabled && announcement.message),
       message: announcement.message ?? "",

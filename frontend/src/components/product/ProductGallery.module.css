@@ -1,4 +1,5 @@
 .gallery {
+  position: relative; /* anchors the enlarge button to the main image (first row) */
   display: grid;
   gap: var(--space-3);
 }
@@ -101,4 +102,76 @@
 .thumbActive {
   border-color: var(--color-primary);
   opacity: 1;
+}
+
+/* ---- Enlarge / zoom ---- */
+
+.zoomButton {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tk-paper) 88%, transparent);
+  color: var(--tk-navy);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.zoomButton:hover {
+  transform: scale(1.06);
+}
+
+.zoom {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.zoomStage {
+  position: relative;
+  width: min(80vw, 46rem);
+  max-width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 72vh;
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--tk-ivory);
+  cursor: zoom-in;
+}
+
+.zoomed {
+  cursor: zoom-out;
+}
+
+.zoomImage {
+  object-fit: contain;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.zoomed .zoomImage {
+  transform: scale(2.2);
+}
+
+.zoomNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.zoomArrow {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--tk-blush-soft);
+  color: var(--tk-navy);
 }

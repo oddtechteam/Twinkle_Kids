@@ -3,13 +3,12 @@ import { notFound } from "next/navigation";
 import { FileText } from "lucide-react";
 import { Suspense } from "react";
 
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { CmsPageArticle } from "@/components/content/CmsPage";
 import { ButtonLink } from "@/components/ui/Button";
-import { Accordion } from "@/components/ui/Form";
+import { ContentSkeleton } from "@/components/ui/Feedback";
 import { InfoPage } from "@/components/ui/InfoPage";
 import { getSiteContent } from "@/lib/content";
-import { type PageBlock, getPublishedPage } from "@/lib/content/pages";
-import styles from "./page.module.css";
+import { getPublishedPage } from "@/lib/content/pages";
 
 /**
  * Website pages from the CMS `website_pages` table (published only). Content is structured
@@ -19,14 +18,18 @@ export async function generateMetadata({ params }: PageProps<"/pages/[slug]">): 
   const { slug } = await params;
   const page = await getPublishedPage(slug);
   if (page && page !== "unavailable") {
-    return { title: page.seo_title ?? page.title, description: page.seo_description ?? undefined };
+    return {
+      title: page.seo_title ?? page.title,
+      description: page.seo_description ?? undefined,
+      alternates: { canonical: `/pages/${page.slug}` },
+    };
   }
-  return { title: "Page" };
+  return { title: "Page", robots: { index: false } };
 }
 
 export default function WebsitePage({ params }: PageProps<"/pages/[slug]">) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ContentSkeleton />}>
       <WebsitePageBody params={params} />
     </Suspense>
   );
@@ -52,51 +55,10 @@ async function WebsitePageBody({ params }: Pick<PageProps<"/pages/[slug]">, "par
   }
 
   return (
-    <article className={`container-narrow ${styles.page}`}>
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: page.title }]} />
-      <h1 className={styles.title}>{page.title}</h1>
-      <div className={styles.body}>
-        {(page.content.blocks ?? []).map((block, index) => (
-          <Block key={index} block={block} />
-        ))}
-      </div>
-    </article>
+    <CmsPageArticle
+      title={page.title}
+      blocks={page.content.blocks}
+      breadcrumbs={[{ label: "Home", href: "/" }, { label: page.title }]}
+    />
   );
-}
-
-function Block({ block }: { block: PageBlock }) {
-  switch (block.type) {
-    case "heading":
-      return block.level === 3 ? <h3 className={styles.h3}>{block.text}</h3> : <h2 className={styles.h2}>{block.text}</h2>;
-    case "paragraph":
-      return <p>{block.text}</p>;
-    case "list":
-      return block.ordered ? (
-        <ol className={styles.list}>
-          {block.items.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ol>
-      ) : (
-        <ul className={styles.list}>
-          {block.items.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
-      );
-    case "faq":
-      return (
-        <div className={styles.faq}>
-          {block.items.map((item, i) => (
-            <Accordion key={i} title={item.question}>
-              <p>{item.answer}</p>
-            </Accordion>
-          ))}
-        </div>
-      );
-    case "callout":
-      return <p className={styles.callout}>{block.text}</p>;
-    default:
-      return null;
-  }
 }

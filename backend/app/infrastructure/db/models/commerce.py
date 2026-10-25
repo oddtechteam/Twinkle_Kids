@@ -96,12 +96,18 @@ class CartItemModel(Base):
         ForeignKey("product_variants.id", ondelete="CASCADE"), index=True
     )
     quantity: Mapped[int] = mapped_column(Integer)
+    # Selling price shown when the item was added: only used to flag later price changes.
+    unit_price_snapshot: Mapped[Decimal | None] = mapped_column(Money)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
     __table_args__ = (
         UniqueConstraint("cart_id", "variant_id", name="uq_cart_items_cart_variant"),
         CheckConstraint("quantity BETWEEN 1 AND 99", name="quantity_range"),
+        CheckConstraint(
+            "unit_price_snapshot IS NULL OR unit_price_snapshot >= 0",
+            name="unit_price_snapshot_non_negative",
+        ),
     )
 
 

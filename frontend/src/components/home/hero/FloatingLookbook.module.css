@@ -1,0 +1,595 @@
+/*
+ * Floating Lookbook: arch with the children, floating look cards, soft clouds and motifs.
+ *
+ * Motion is automatic and CSS-only (transform/opacity): a staggered entrance, then slow
+ * independent floats. Entrance and float live on separate wrappers so they never fight over
+ * the same property. Distances shrink on phones; reduced motion keeps everything still.
+ */
+
+.stage {
+  --float-y: -8px; /* card float distance */
+  --arch-float-y: -8px;
+
+  position: relative;
+  width: 100%;
+  aspect-ratio: 20 / 19; /* reserves the space before images load (no layout shift) */
+}
+
+/* ---- Backdrop ---- */
+
+.halo {
+  position: absolute;
+  top: 2%;
+  left: 50%;
+  width: 84%;
+  aspect-ratio: 1;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--tk-blush) 75%, transparent),
+    color-mix(in srgb, var(--tk-blush-soft) 55%, transparent) 62%,
+    transparent
+  );
+  pointer-events: none;
+  animation: fadeIn 1.2s var(--ease-out) 0.1s both;
+}
+
+.cloudA,
+.cloudB {
+  position: absolute;
+  bottom: -2%;
+  border-radius: 50%;
+  filter: blur(18px);
+  pointer-events: none;
+  animation: fadeIn 1.4s var(--ease-out) 0.3s both;
+}
+
+.cloudA {
+  left: -4%;
+  width: 44%;
+  height: 20%;
+  background: color-mix(in srgb, var(--tk-blush) 60%, transparent);
+}
+
+.cloudB {
+  right: -6%;
+  width: 50%;
+  height: 24%;
+  background: color-mix(in srgb, var(--tk-blush-soft) 85%, transparent);
+}
+
+/* ---- Arch with the children (the focal point) ---- */
+
+.arch {
+  position: absolute;
+  z-index: 1;
+  bottom: 3%;
+  left: 50%;
+  height: 93%;
+  aspect-ratio: 500 / 941;
+  translate: -50% 0;
+}
+
+.archEnter {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: rise 1s var(--ease-out) 0.25s both;
+}
+
+/* Warm glow behind the children, breathing with the float. */
+.glow {
+  position: absolute;
+  inset: 6% -18% -4%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--tk-gold-soft) 90%, transparent),
+    color-mix(in srgb, var(--tk-blush) 55%, transparent) 55%,
+    transparent
+  );
+  filter: blur(10px);
+  pointer-events: none;
+  animation: glow 6s var(--ease-in-out) infinite;
+}
+
+.archFloat {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: archFloat 6s var(--ease-in-out) infinite;
+}
+
+.archFrame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-arch);
+  background: var(--tk-blush-soft);
+  outline: 6px solid color-mix(in srgb, var(--tk-paper) 75%, transparent);
+  box-shadow: 0 34px 60px -32px color-mix(in srgb, var(--tk-coral-strong) 45%, transparent);
+}
+
+.archImage {
+  object-fit: cover;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .desktopOnly {
+    display: none;
+  }
+
+  .mobileOnly {
+    display: block;
+  }
+}
+
+/* ---- Floating look cards ---- */
+
+.looks {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* Slot: position + entrance. Float: the idle motion. Card: static tilt. */
+.slot {
+  position: absolute;
+  width: 22%;
+  animation: rise 0.9s var(--ease-out) var(--enter-delay, 0.6s) both;
+}
+
+.dress {
+  --enter-delay: 0.55s;
+  --tilt: -3deg;
+  --float-duration: 6s;
+  --float-delay: 0s;
+  top: 6%;
+  left: 1%;
+}
+
+.outfit {
+  --enter-delay: 0.7s;
+  --tilt: 3deg;
+  --float-duration: 7.6s;
+  --float-delay: -1.4s;
+  top: 10%;
+  right: 1%;
+}
+
+/* Same rhythm as the dress, half a cycle apart, so the left column moves in counterpoint. */
+.shoes {
+  --enter-delay: 0.85s;
+  --tilt: 3deg;
+  --float-duration: 6s;
+  --float-delay: -3s;
+  top: 58%;
+  left: 3%;
+}
+
+.hat {
+  --enter-delay: 1s;
+  --tilt: -3deg;
+  --float-duration: 6.8s;
+  --float-delay: -4.6s;
+  top: 58%;
+  right: 2%;
+}
+
+.float {
+  animation: floatY var(--float-duration) var(--ease-in-out) var(--float-delay) infinite;
+}
+
+/* The boy's outfit adds a slight 1.5° sway to its float. */
+.outfit .float {
+  animation-name: floatTilt;
+}
+
+/* Soft contact shadow that tightens as the card rises. */
+.cardShadow {
+  position: absolute;
+  bottom: -9%;
+  left: 14%;
+  width: 72%;
+  height: 9%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(19 31 59 / 0.22), transparent);
+  filter: blur(3px);
+  animation: shadow var(--float-duration) var(--ease-in-out) var(--float-delay) infinite;
+}
+
+.card {
+  position: relative;
+  padding: 7%;
+  border: 1px solid color-mix(in srgb, var(--tk-gold) 30%, transparent);
+  border-radius: 18px;
+  background: var(--tk-paper);
+  box-shadow:
+    0 22px 40px -22px rgb(19 31 59 / 0.35),
+    0 2px 6px -2px rgb(19 31 59 / 0.08);
+  rotate: var(--tilt, 0deg);
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: var(--ratio, 5 / 6);
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--tk-ivory-deep);
+}
+
+.photoImage {
+  object-fit: cover;
+}
+
+/* Covers the top-right corner of each product shot, as in the reference. */
+.like {
+  position: absolute;
+  top: 4%;
+  right: 4%;
+  display: grid;
+  place-items: center;
+  width: 30%;
+  max-width: 2.25rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--tk-paper);
+  color: var(--tk-coral-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.like svg,
+.badge svg {
+  width: 52%;
+  height: 52%;
+  stroke-width: 2;
+}
+
+.swatches {
+  display: flex;
+  gap: 7%;
+  margin-top: 8%;
+  padding-inline: 3%;
+}
+
+.swatches i {
+  width: 12%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(19 31 59 / 0.06);
+}
+
+/* Promotional icon: pops in gently once its card has arrived. */
+.badge {
+  position: absolute;
+  bottom: 18%;
+  display: grid;
+  place-items: center;
+  width: 28%;
+  max-width: 2.6rem;
+  aspect-ratio: 1;
+  border: 2px solid var(--tk-paper);
+  border-radius: 50%;
+  background: var(--tk-coral);
+  color: var(--tk-paper);
+  box-shadow: var(--shadow-sm);
+  animation: pop 0.6s var(--ease-out) calc(var(--enter-delay, 0.6s) + 0.7s) both;
+}
+
+.dress .badge,
+.shoes .badge {
+  right: -10%;
+}
+
+.outfit .badge,
+.hat .badge {
+  left: -10%;
+}
+
+.outfit .badge {
+  top: -8%;
+  right: -8%;
+  bottom: auto;
+  left: auto;
+}
+
+.badgeGold {
+  background: var(--tk-gold);
+}
+
+/* ---- Decorative stars, hearts and sparkles ---- */
+
+.decor,
+.sparkle {
+  position: absolute;
+  z-index: 3;
+  display: block;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.decor {
+  animation: fadeIn 1s var(--ease-out) 1.3s both;
+}
+
+.twinkle {
+  animation: twinkle 4.8s var(--ease-in-out) infinite;
+}
+
+.pulse {
+  animation: pulse 5.6s var(--ease-in-out) infinite;
+}
+
+.decorA {
+  top: 2%;
+  left: 30%;
+  color: var(--tk-gold);
+}
+
+.decorB {
+  top: 4%;
+  right: 22%;
+  color: var(--tk-coral);
+}
+
+.decorC {
+  top: 44%;
+  left: 23%;
+  color: var(--tk-gold);
+}
+
+.decorD {
+  top: 50%;
+  right: 24%;
+  color: var(--tk-blush-deep);
+}
+
+.decorE {
+  bottom: 8%;
+  left: 20%;
+  color: var(--tk-gold);
+}
+
+.decorE .twinkle {
+  animation-delay: -2.2s;
+}
+
+.decorF {
+  top: 36%;
+  right: -1%;
+  color: var(--tk-blush-deep);
+}
+
+.decorF .pulse {
+  animation-delay: -2.8s;
+}
+
+/* Tiny sparkles: invisible most of the time, a brief glint now and then. */
+.sparkle {
+  color: var(--tk-gold);
+  opacity: 0;
+  animation: sparkle var(--sparkle-duration, 8s) var(--ease-in-out) var(--sparkle-delay, 2s) infinite;
+}
+
+.sparkleA {
+  --sparkle-duration: 7s;
+  --sparkle-delay: 2s;
+  top: 18%;
+  left: 27%;
+}
+
+.sparkleB {
+  --sparkle-duration: 9s;
+  --sparkle-delay: 4.5s;
+  top: 30%;
+  right: 25%;
+}
+
+.sparkleC {
+  --sparkle-duration: 11s;
+  --sparkle-delay: 7s;
+  bottom: 22%;
+  right: 23%;
+}
+
+/* ---- Keyframes ---- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes archFloat {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(var(--arch-float-y)) scale(1.012);
+  }
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.97);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(var(--float-y));
+  }
+}
+
+@keyframes floatTilt {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(var(--float-y)) rotate(1.5deg);
+  }
+}
+
+@keyframes shadow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(0.86);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.88);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes sparkle {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  84% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+/* ---- Phones: same motion, shorter distances; cards keep clear of the faces ---- */
+
+@media (max-width: 639px) {
+  .stage {
+    --float-y: -5px;
+    --arch-float-y: -5px;
+
+    aspect-ratio: 1 / 1.02;
+  }
+
+  .slot {
+    width: 24%;
+  }
+
+  .dress,
+  .outfit {
+    top: 3%;
+  }
+
+  .shoes,
+  .hat {
+    top: auto;
+    bottom: 4%;
+  }
+
+  .dress,
+  .shoes {
+    left: -1%;
+  }
+
+  .outfit,
+  .hat {
+    right: -1%;
+  }
+
+  .card {
+    padding: 6%;
+    border-radius: 14px;
+  }
+
+  .decorC,
+  .decorD,
+  .sparkleC {
+    display: none;
+  }
+}
+
+/* ---- Reduced motion: a calm, static composition ---- */
+
+@media (prefers-reduced-motion: reduce) {
+  .halo,
+  .cloudA,
+  .cloudB,
+  .archEnter,
+  .glow,
+  .archFloat,
+  .slot,
+  .float,
+  .outfit .float,
+  .cardShadow,
+  .badge,
+  .decor,
+  .twinkle,
+  .pulse {
+    animation: none;
+  }
+
+  .sparkle {
+    display: none;
+  }
+}

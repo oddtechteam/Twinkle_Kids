@@ -1,0 +1,46 @@
+.progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--z-toast);
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms var(--ease-out);
+}
+
+.visible {
+  opacity: 1;
+}
+
+.bar {
+  position: absolute;
+  inset: 0;
+  width: 35%;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  background: linear-gradient(90deg, var(--tk-blush), var(--tk-coral), var(--tk-gold));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tk-coral) 55%, transparent);
+  animation: travel 1.3s var(--ease-in-out) infinite;
+}
+
+@keyframes travel {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(290%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress {
+    transition: none;
+  }
+
+  .bar {
+    width: 100%;
+    animation: none;
+    opacity: 0.7;
+  }
+}

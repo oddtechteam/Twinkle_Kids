@@ -39,12 +39,15 @@ export const developmentContent: SiteContent = {
     primary: [
       { label: "Shop All", href: "/shop" },
       { label: "New Arrivals", href: "/shop?sort=newest" },
-      { label: "Collections", href: "/collections/festive-edit" },
+      { label: "About Us", href: "/about" },
+      { label: "Contact Us", href: "/contact" },
     ],
     mobile: [
+      { label: "Home", href: "/" },
       { label: "Shop All", href: "/shop" },
       { label: "New Arrivals", href: "/shop?sort=newest" },
-      { label: "Collections", href: "/collections/festive-edit" },
+      { label: "About Us", href: "/about" },
+      { label: "Contact Us", href: "/contact" },
     ],
   },
   homepage: {
@@ -187,26 +190,7 @@ export const developmentContent: SiteContent = {
       },
     ],
   },
-  catalog: {
-    filterSizes: ["0-6M", "6-12M", "1-2Y", "2-3Y", "3-4Y", "4-5Y", "5-6Y", "6-7Y", "7-8Y"],
-    filterColours: [
-      { name: "Blush", hex: "#F5CDD3" },
-      { name: "Coral", hex: "#EE788B" },
-      { name: "Ivory", hex: "#FFF7F1" },
-      { name: "Navy", hex: "#1C2D52" },
-      { name: "Gold", hex: "#D6B17B" },
-      { name: "Denim Blue", hex: "#5B7BA6" },
-    ],
-    priceBands: [
-      { label: "Under ₹500", min: null, max: "499.99" },
-      { label: "₹500 – ₹999", min: "500", max: "999.99" },
-      { label: "₹1,000 & above", min: "1000", max: null },
-    ],
-    purchaseNotes: [
-      { icon: "ruler", text: "Check the size guide for the best fit" },
-      { icon: "message-circle", text: "Questions? Message us on WhatsApp" },
-    ],
-  },
+  commerce: { whatsappOrdering: false, guestCheckout: true, currency: "INR" },
   footer: {
     blurb:
       "A children's fashion boutique for adorable everyday outfits, festive looks and special occasion styles.",
@@ -216,24 +200,20 @@ export const developmentContent: SiteContent = {
         links: [
           { label: "Shop all", href: "/shop" },
           { label: "New arrivals", href: "/shop?sort=newest" },
-          { label: "Festive edit", href: "/collections/festive-edit" },
           { label: "Wishlist", href: "/wishlist" },
+          { label: "Shopping bag", href: "/bag" },
         ],
       },
       {
         title: "Customer care",
         links: [
-          { label: "Size guide", href: "/pages/size-guide" },
-          { label: "Shipping", href: "/pages/shipping" },
-          { label: "Returns & exchanges", href: "/pages/returns" },
-          { label: "Contact us", href: "/pages/contact" },
+          { label: "About us", href: "/about" },
+          { label: "Contact us", href: "/contact" },
+          { label: "My account", href: "/account" },
         ],
       },
     ],
-    policies: [
-      { label: "Privacy policy", href: "/pages/privacy-policy" },
-      { label: "Terms of service", href: "/pages/terms" },
-    ],
+    policies: [],
     social: [],
   },
   contact: { email: null, phone: null, whatsapp: null, address: null, hours: null },

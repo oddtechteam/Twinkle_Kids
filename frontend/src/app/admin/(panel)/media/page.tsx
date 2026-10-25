@@ -3,7 +3,7 @@
 import { RefreshCw, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { AdminPage, ConfirmDialog, ErrorState, TextInput, adminStyles as styles } from "@/components/admin/Kit";
+import { AdminPage, ConfirmDialog, ErrorState, LoadingState, TextInput, adminStyles as styles } from "@/components/admin/Kit";
 import { MEDIA_PURPOSES, MediaThumb } from "@/components/admin/Pickers";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -87,7 +87,7 @@ function AssetDialog({
         <div>
           <span className={styles.label}>Used in</span>
           {usage.error && <ErrorState message={usage.error} onRetry={usage.reload} />}
-          {usage.loading && <p className={styles.hint}>Checking…</p>}
+          {usage.loading && <LoadingState inline label="Checking where this image is used…" />}
           {usage.data && !usage.data.in_use && <p className={styles.hint}>Not used anywhere — safe to delete.</p>}
           {usage.data?.in_use && (
             <>
@@ -192,6 +192,7 @@ export default function MediaLibraryPage() {
           ))}
         </select>
         {page.error && <ErrorState message={page.error} onRetry={page.reload} />}
+        {page.loading && items.length === 0 && <LoadingState label="Loading images…" />}
         {!page.loading && items.length === 0 && !page.error && <p className={styles.hint}>No images yet.</p>}
         <div className={styles.mediaGrid}>
           {items.map((asset) => (

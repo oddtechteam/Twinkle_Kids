@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import { UserRound } from "lucide-react";
+import { Suspense } from "react";
 
-import { ButtonLink } from "@/components/ui/Button";
-import { InfoPage } from "@/components/ui/InfoPage";
+import { AccountView } from "@/components/account/AccountView";
+import { Loader } from "@/components/ui/Loader";
 
-export const metadata: Metadata = { title: "Account", robots: { index: false } };
+export const metadata: Metadata = { title: "My account", robots: { index: false, follow: false } };
 
-/** Placeholder until customer sign-in UI is built on the existing /api/v1/auth endpoints. */
+/** Sign in, create an account, or see the signed-in profile (existing /api/v1/auth endpoints). */
 export default function AccountPage() {
   return (
-    <InfoPage
-      breadcrumbs={[{ label: "Home", href: "/" }, { label: "Account" }]}
-      icon={<UserRound aria-hidden="true" size={26} />}
-      title="Customer accounts are coming soon"
-      description="Soon you'll be able to sign in, manage addresses and see your past orders here."
-      action={<ButtonLink href="/shop">Continue shopping</ButtonLink>}
-    />
+    <Suspense fallback={<Loader label="Opening your account…" />}>
+      <AccountView />
+    </Suspense>
   );
 }

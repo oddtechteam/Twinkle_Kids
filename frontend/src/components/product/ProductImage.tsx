@@ -34,7 +34,8 @@ export function ProductImage({
           alt={image.alt_text ?? name}
           fill
           sizes={sizes}
-          priority={priority}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : undefined}
           className={styles.image}
         />
       ) : (

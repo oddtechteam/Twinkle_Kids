@@ -293,6 +293,13 @@ class ShippingRuleOut(_Out):
     is_active: bool
 
 
+class PublicShippingRuleOut(_Out):
+    name: str
+    fee: Decimal
+    min_order_amount: Decimal
+    max_order_amount: Decimal | None
+
+
 class SizeChartOut(_Out):
     id: UUID
     name: str

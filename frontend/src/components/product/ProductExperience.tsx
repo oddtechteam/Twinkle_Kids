@@ -1,17 +1,21 @@
 "use client";
 
-import { Ruler, ShoppingBag } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MessageCircle, Ruler, ShoppingBag, Zap } from "lucide-react";
 import { type ReactNode, useId, useMemo, useState } from "react";
 
+import { useNavigationProgress } from "@/components/layout/NavigationProgress";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { ChoiceChip, ColourSwatch } from "@/components/ui/Form";
 import { Icon } from "@/components/ui/Icon";
 import { Price } from "@/components/ui/Price";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { useToast } from "@/components/ui/Toast";
 import type { ProductDetail, ProductVariant } from "@/lib/api/types";
 import { useBag } from "@/lib/bag/BagProvider";
+import { bagErrorMessage, startWhatsAppRequest } from "@/lib/bag/api";
 import type { IconName } from "@/lib/content/types";
 import { ProductGallery } from "./ProductGallery";
 import { WishlistButton } from "./WishlistButton";
@@ -19,14 +23,15 @@ import styles from "./ProductExperience.module.css";
 
 interface Props {
   product: ProductDetail;
-  notes: { icon: IconName; text: string }[];
+  /** Store setting: "Order on WhatsApp" is offered only when enabled with a number. */
+  whatsappEnabled: boolean;
   eyebrow?: ReactNode;
   /** Server-rendered description and details. */
   details: ReactNode;
 }
 
 /** Gallery + purchase panel sharing the selected colour/size. Prices come from the variant's PriceView. */
-export function ProductExperience({ product, notes, eyebrow, details }: Props) {
+export function ProductExperience({ product, whatsappEnabled, eyebrow, details }: Props) {
   const variants = product.variants.filter((v) => v.is_active);
   const hasColours = product.colours.length > 0;
   const hasSizes = product.sizes.length > 0;
@@ -37,10 +42,13 @@ export function ProductExperience({ product, notes, eyebrow, details }: Props) {
   const [size, setSize] = useState<string | null>(product.sizes.length === 1 ? (product.sizes[0] ?? null) : null);
   const [showSizeError, setShowSizeError] = useState(false);
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [busy, setBusy] = useState<"bag" | "buy" | "whatsapp" | null>(null);
 
   const bag = useBag();
   const toast = useToast();
+  const router = useRouter();
+  const progress = useNavigationProgress();
   const sizeGroup = useId();
   const colourGroup = useId();
   const errorId = useId();
@@ -67,30 +75,75 @@ export function ProductExperience({ product, notes, eyebrow, details }: Props) {
   const chart = product.size_chart;
   const chartUsable = Boolean(chart?.columns?.length && chart?.rows?.length);
 
-  async function addToBag() {
+  const notes: { icon: IconName; text: string }[] = [
+    ...(chartUsable ? [{ icon: "ruler" as const, text: "Check the size guide for the best fit" }] : []),
+    ...(whatsappEnabled ? [{ icon: "message-circle" as const, text: "Prefer to chat? Order on WhatsApp" }] : []),
+  ];
+
+  /** The chosen variant, or null after prompting the shopper to finish choosing. */
+  function requireSelection(): ProductVariant | null {
     if (!selected) {
       setShowSizeError(true);
+      return null;
+    }
+    return selected;
+  }
+
+  async function addToBag(then?: "checkout") {
+    const variant = requireSelection();
+    if (!variant) return;
+    setBusy(then ? "buy" : "bag");
+    const result = await bag.add(variant.id, quantity);
+    setBusy(null);
+    if (!result.ok) {
+      toast.show({ tone: "warning", title: "Couldn't add to your bag", description: result.message });
       return;
     }
-    setAdding(true);
-    const result = await bag.add(selected.id, 1);
-    setAdding(false);
-    if (result.ok) {
-      toast.show({ title: "Added to your bag", description: product.name });
-    } else if (result.reason === "unavailable") {
+    if (then === "checkout") {
+      progress.start("/bag");
+      router.push("/bag");
+      return;
+    }
+    toast.show({
+      title: "Added to your bag",
+      description: `${quantity} × ${product.name}${variantLabel(variant) ? ` (${variantLabel(variant)})` : ""}`,
+    });
+  }
+
+  async function orderOnWhatsApp() {
+    const variant = requireSelection();
+    if (!variant) return;
+    // Open the tab inside the click so pop-up blockers allow it, then point it at WhatsApp.
+    const tab = window.open("", "_blank");
+    setBusy("whatsapp");
+    try {
+      const link = await startWhatsAppRequest([{ variantId: variant.id, quantity }]);
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = link.url;
+      } else {
+        window.location.href = link.url;
+      }
       toast.show({
         tone: "info",
-        title: "Online bag opens soon",
-        description: "Save this style to your wishlist and we'll be ready for you shortly.",
+        title: "Continue in WhatsApp",
+        description: `Send the pre-filled message to place your request (ref. ${link.reference}). We'll confirm availability and delivery there.`,
       });
-    } else {
-      toast.show({ tone: "warning", title: "Couldn't add to bag", description: "Please try again." });
+    } catch (error) {
+      tab?.close();
+      toast.show({ tone: "warning", title: "Couldn't open WhatsApp", description: bagErrorMessage(error) });
+    } finally {
+      setBusy(null);
     }
   }
 
+  // Nothing purchasable at all, or the chosen option is out of stock.
+  const soldOut = variants.length === 0 || !product.in_stock || (selected !== null && !selected.in_stock);
   const stockLabel = selected
     ? selected.in_stock
-      ? "In stock"
+      ? selected.low_stock
+        ? "Only a few left"
+        : "In stock"
       : "Sold out in this option"
     : product.in_stock
       ? null
@@ -181,24 +234,62 @@ export function ProductExperience({ product, notes, eyebrow, details }: Props) {
 
         <div className={styles.stockRow}>
           {stockLabel && (
-            <Badge tone={stockLabel === "In stock" ? "gold" : "muted"}>{stockLabel}</Badge>
+            <Badge tone={selected?.in_stock || (!selected && product.in_stock) ? "gold" : "muted"}>{stockLabel}</Badge>
           )}
+          <p className={styles.sku}>
+            SKU <span>{selected?.sku ?? product.sku}</span>
+          </p>
+        </div>
+
+        <div className={styles.quantityRow}>
+          <span className={styles.optionLegend} aria-hidden="true">
+            Quantity
+          </span>
+          <QuantityStepper value={quantity} onChange={setQuantity} label="Quantity" disabled={soldOut} />
         </div>
 
         <div className={styles.actions}>
           <Button
             size="lg"
             fullWidth
-            onClick={addToBag}
-            loading={adding}
-            disabled={selected !== null && !selected.in_stock}
+            onClick={() => void addToBag()}
+            loading={busy === "bag"}
+            disabled={soldOut || busy !== null}
             iconStart={<ShoppingBag aria-hidden="true" />}
             aria-describedby={showSizeError ? errorId : undefined}
           >
-            {selected && !selected.in_stock ? "Sold out" : "Add to bag"}
+            {soldOut ? "Sold out" : "Add to bag"}
           </Button>
           <WishlistButton slug={product.slug} name={product.name} variant="inline" />
         </div>
+        {!soldOut && (
+          <div className={styles.secondaryActions}>
+            <Button
+              variant="outline"
+              size="lg"
+              fullWidth
+              onClick={() => void addToBag("checkout")}
+              loading={busy === "buy"}
+              disabled={busy !== null}
+              iconStart={<Zap aria-hidden="true" />}
+            >
+              Buy now
+            </Button>
+            {whatsappEnabled && (
+              <Button
+                variant="soft"
+                size="lg"
+                fullWidth
+                onClick={() => void orderOnWhatsApp()}
+                loading={busy === "whatsapp"}
+                disabled={busy !== null}
+                iconStart={<MessageCircle aria-hidden="true" />}
+              >
+                Order on WhatsApp
+              </Button>
+            )}
+          </div>
+        )}
 
         {notes.length > 0 && (
           <ul className={styles.notes}>
@@ -252,4 +343,8 @@ export function ProductExperience({ product, notes, eyebrow, details }: Props) {
       )}
     </div>
   );
+}
+
+function variantLabel(variant: ProductVariant): string {
+  return [variant.size, variant.colour].filter(Boolean).join(" / ");
 }

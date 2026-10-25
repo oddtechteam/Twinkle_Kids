@@ -7,6 +7,7 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app.application.use_cases.auth import AuthService, RequestContext
+from app.application.use_cases.cart import CartService
 from app.application.use_cases.catalog_admin import CategoryCommands, ProductCommands
 from app.application.use_cases.catalog_queries import CatalogReader
 from app.application.use_cases.check_health import CheckHealth
@@ -30,11 +31,12 @@ from app.application.use_cases.site import (
     ShippingService,
     SizeChartService,
 )
+from app.application.use_cases.whatsapp import WhatsAppOrdering
 from app.bootstrap import Container
 from app.core.config import Settings
 from app.core.version import __version__
 from app.domain.entities.identity import Permission, User
-from app.domain.errors import PermissionDeniedError
+from app.domain.errors import AuthenticationError, PermissionDeniedError
 from app.domain.repositories.health import HealthProbe
 from app.infrastructure.db.catalog_queries import SqlAlchemyCatalogQueries
 from app.infrastructure.db.dashboard_queries import SqlAlchemyDashboardQueries
@@ -47,6 +49,10 @@ from app.infrastructure.db.repositories.identity import (
     SqlAlchemyAuditLogRepository,
     SqlAlchemySessionRepository,
     SqlAlchemyUserRepository,
+)
+from app.infrastructure.db.repositories.commerce import (
+    SqlAlchemyCartRepository,
+    SqlAlchemyWhatsAppRequestRepository,
 )
 from app.infrastructure.db.repositories.inventory import SqlAlchemyInventoryLedger
 from app.infrastructure.db.repositories.media import SqlAlchemyMediaAssetRepository
@@ -147,6 +153,22 @@ def get_current_user(
 
 
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
+
+
+def get_optional_user(
+    auth: AuthServiceDep, token: Annotated[str | None, Depends(session_token)]
+) -> User | None:
+    """The signed-in user, or None for guests (an expired session is treated as a guest)."""
+    if not token:
+        return None
+    try:
+        user, _session = auth.authenticate(token)
+    except AuthenticationError:
+        return None
+    return user
+
+
+OptionalUserDep = Annotated[User | None, Depends(get_optional_user)]
 
 
 def require_permission(*permissions: Permission) -> Callable[[User], User]:
@@ -364,3 +386,33 @@ def get_replace_media(container: ContainerDep, session: SessionDep) -> ReplaceMe
 
 UpdateMediaDep = Annotated[UpdateMediaDetails, Depends(get_update_media)]
 ReplaceMediaDep = Annotated[ReplaceMedia, Depends(get_replace_media)]
+
+
+# --- Cart & WhatsApp ordering -----------------------------------------------------------------
+
+
+def get_cart_service(container: ContainerDep, session: SessionDep) -> CartService:
+    return CartService(
+        carts=SqlAlchemyCartRepository(session),
+        products=SqlAlchemyProductRepository(session),
+        queries=_queries(container, session),
+        shipping=SqlAlchemyShippingRuleRepository(session),
+        settings=SqlAlchemySettingsRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_whatsapp_ordering(container: ContainerDep, session: SessionDep) -> WhatsAppOrdering:
+    return WhatsAppOrdering(
+        settings=SqlAlchemySettingsRepository(session),
+        carts=SqlAlchemyCartRepository(session),
+        products=SqlAlchemyProductRepository(session),
+        requests=SqlAlchemyWhatsAppRequestRepository(session),
+        rate_limiter=container.rate_limiter,
+        uow=SqlAlchemyUnitOfWork(session),
+        storefront_url=container.settings.storefront_url,
+    )
+
+
+CartServiceDep = Annotated[CartService, Depends(get_cart_service)]
+WhatsAppOrderingDep = Annotated[WhatsAppOrdering, Depends(get_whatsapp_ordering)]

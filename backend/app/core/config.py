@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     cookie_secure: bool | None = None  # default: true outside development/test
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     cookie_domain: str | None = None
+    # Guest shopping bag: random token in an HttpOnly cookie; only its hash is stored.
+    cart_cookie_name: str = "tk_cart"
+    cart_ttl_days: int = Field(default=30, ge=1, le=365)
 
     # Login / registration throttling (per API process; see infrastructure/auth/rate_limit.py)
     login_max_attempts_per_account: int = Field(default=5, ge=1)
@@ -93,6 +96,8 @@ class Settings(BaseSettings):
     cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000"]
     )
+    # Public storefront origin, used in links the API writes (e.g. WhatsApp order messages).
+    storefront_url: str = "http://localhost:3000"
 
     @field_validator("cors_origins", "protected_neon_branches", mode="before")
     @classmethod

@@ -1,0 +1,182 @@
+/* Twinkle Kids loader — swinging dress, sparkles, indeterminate progress. Transform/opacity only. */
+
+.loader {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  text-align: center;
+  color: var(--tk-navy);
+  /* Appears only if loading lasts a moment: quick loads never flash it. */
+  opacity: 0;
+  animation: appear 400ms var(--ease-out) 250ms forwards;
+}
+
+.page {
+  min-height: clamp(16rem, 45vh, 26rem); /* fills the content area, never the whole screen */
+  padding: var(--space-8) var(--space-4);
+}
+
+.inline {
+  padding: var(--space-5) var(--space-3);
+}
+
+.art {
+  width: 6.5rem;
+  height: 6.5rem;
+  overflow: visible;
+}
+
+.inline .art {
+  width: 4.25rem;
+  height: 4.25rem;
+}
+
+.halo {
+  fill: var(--tk-blush-soft);
+}
+
+.hook {
+  fill: none;
+  stroke: var(--tk-gold);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.swing {
+  transform-box: view-box;
+  transform-origin: 60px 30px;
+  animation: swing 2.6s var(--ease-in-out) infinite;
+}
+
+.hanger {
+  fill: none;
+  stroke: var(--tk-gold);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.dress {
+  fill: var(--tk-blush);
+  stroke: var(--tk-coral);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.sash {
+  stroke: var(--tk-coral);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.bow {
+  fill: var(--tk-gold);
+}
+
+.sparkle {
+  fill: var(--tk-gold);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 2.4s var(--ease-in-out) infinite;
+}
+
+.sparkleB {
+  fill: var(--tk-coral);
+  animation-delay: -0.8s;
+}
+
+.sparkleC {
+  animation-delay: -1.6s;
+}
+
+.label {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.01em;
+}
+
+.inline .label {
+  font-size: var(--text-xs);
+}
+
+/* Indeterminate: honest "working on it", never a made-up percentage. */
+.track {
+  position: relative;
+  width: 7.5rem;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--tk-ivory-deep);
+}
+
+.bar {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--tk-blush), var(--tk-coral), var(--tk-gold));
+  animation: slide 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes swing {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(260%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader {
+    animation-duration: 1ms;
+  }
+
+  .swing,
+  .sparkle {
+    animation: none;
+  }
+
+  .sparkle {
+    opacity: 0.8;
+  }
+
+  /* A calm, static bar still signals "in progress". */
+  .bar {
+    width: 100%;
+    animation: none;
+    opacity: 0.6;
+  }
+}

@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ListingSkeleton, ListingView } from "@/components/catalog/ListingView";
-import { getCategory, listProducts } from "@/lib/catalog/api";
+import { getCategory, getFacets, listProducts } from "@/lib/catalog/api";
+import { buildFilterOptions } from "@/lib/catalog/filters";
 import { parseListingQuery } from "@/lib/catalog/query";
 import { getSiteContent } from "@/lib/content";
 
@@ -12,9 +13,17 @@ export async function generateMetadata({ params }: PageProps<"/category/[slug]">
   const result = await getCategory(slug);
   if (!result.ok) return { title: "Category" };
   const { category } = result.data;
+  const description = category.seo_description ?? category.description ?? undefined;
   return {
     title: category.seo_title ?? category.name,
-    description: category.seo_description ?? category.description ?? undefined,
+    description,
+    alternates: { canonical: `/category/${category.slug}` },
+    openGraph: {
+      title: category.seo_title ?? category.name,
+      description,
+      url: `/category/${category.slug}`,
+      images: category.image ? [{ url: category.image.url, width: category.image.width, height: category.image.height }] : undefined,
+    },
   };
 }
 
@@ -29,7 +38,11 @@ export default function CategoryPage({ params, searchParams }: PageProps<"/categ
 async function CategoryListing({ params, searchParams }: PageProps<"/category/[slug]">) {
   const [{ slug }, search, content] = await Promise.all([params, searchParams, getSiteContent()]);
   const query = parseListingQuery(search, content.defaultSort);
-  const [detail, result] = await Promise.all([getCategory(slug), listProducts(query, { category: slug })]);
+  const [detail, result, facets] = await Promise.all([
+    getCategory(slug),
+    listProducts(query, { category: slug }),
+    getFacets({ category: slug, q: query.q }),
+  ]);
 
   if (!detail.ok && detail.status === 404) notFound();
 
@@ -50,7 +63,7 @@ async function CategoryListing({ params, searchParams }: PageProps<"/category/[s
       basePath={`/category/${slug}`}
       query={query}
       result={result}
-      options={content.catalog}
+      options={buildFilterOptions(facets)}
       related={detail.ok ? detail.data.children.map((c) => ({ label: c.name, href: `/category/${c.slug}` })) : []}
     />
   );

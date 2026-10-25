@@ -1,0 +1,25 @@
+.page {
+  padding-top: var(--space-6);
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-8);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: 1.08fr 1fr;
+  }
+}
+
+.image {
+  aspect-ratio: 4 / 5;
+}
+
+.info {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+}

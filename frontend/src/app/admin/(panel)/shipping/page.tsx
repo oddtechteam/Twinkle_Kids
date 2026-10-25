@@ -9,6 +9,7 @@ import {
   ConfirmDialog,
   DataTable,
   ErrorState,
+  LoadingState,
   MoneyInput,
   Pill,
   TextInput,
@@ -115,6 +116,7 @@ export default function ShippingRulesPage() {
       }
     >
       {rules.error && <ErrorState message={rules.error} onRetry={rules.reload} />}
+      {rules.loading && !rules.data && <LoadingState label="Loading shipping rules…" />}
       {rules.data && <DataTable columns={columns} rows={rules.data} rowKey={(r) => r.id} empty={<p className={styles.hint}>No shipping rules yet.</p>} />}
       {editing !== null && (
         <RuleDialog
