@@ -19,6 +19,7 @@ class SqlAlchemyInventoryLedger:
         reason: InventoryReason,
         actor_user_id: UUID | None,
         note: str | None = None,
+        order_id: UUID | None = None,
     ) -> None:
         self._session.add(
             InventoryMovementModel(
@@ -28,5 +29,6 @@ class SqlAlchemyInventoryLedger:
                 reason=reason.value,
                 actor_user_id=actor_user_id,
                 note=note,
+                order_id=order_id,
             )
         )

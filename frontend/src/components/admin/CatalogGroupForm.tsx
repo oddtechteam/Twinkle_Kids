@@ -129,6 +129,7 @@ export function GroupForm({
           value={f.image_media_id}
           onChange={(id) => set("image_media_id", id)}
           purpose={kind === "category" ? "category_image" : "collection_image"}
+          frame={kind}
         />
         <div className={styles.grid2}>
           <TextInput label="SEO title" value={f.seo_title} onChange={(v) => set("seo_title", v)} maxLength={70} />

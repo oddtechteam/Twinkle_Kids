@@ -51,8 +51,12 @@ export function Dialog({
       className={`${styles.dialog} ${styles[variant]} ${className ?? ""}`}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      onClose={onClose}
+      // React passes a nested dialog's close/cancel up to its parents' handlers: only react to our own.
+      onClose={(event) => {
+        if (event.target === ref.current) onClose();
+      }}
       onCancel={(event) => {
+        if (event.target !== ref.current) return;
         event.preventDefault();
         onClose();
       }}

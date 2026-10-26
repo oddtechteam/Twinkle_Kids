@@ -144,17 +144,34 @@ def test_stock_changes_are_recorded_in_the_ledger(
     staff_client: TestClient, container: Container
 ) -> None:
     product = create_product(staff_client)
+    variant_id = product["variants"][0]["id"]
+
+    # Saving the product never overwrites live stock (a sale may have happened meanwhile)...
     payload = product_payload()
     payload["variants"][0]["stock_quantity"] = 9  # type: ignore[index]
     staff_client.put(f"{ADMIN}/products/{product['id']}", json=payload, headers=csrf(staff_client))
+    # ...stock changes go through atomic, ledgered adjustments instead.
+    adjusted = staff_client.post(
+        f"{ADMIN}/inventory/{variant_id}/adjust",
+        json={"delta": 4, "reason": "restock", "note": "New delivery"},
+        headers=csrf(staff_client),
+    )
+    assert adjusted.status_code == 200, adjusted.text
+    assert adjusted.json()["stock_quantity"] == 9
     with container.session_factory() as session:
         rows = session.scalars(
             select(InventoryMovementModel).order_by(InventoryMovementModel.created_at)
         ).all()
     assert [(r.reason, r.quantity_delta, r.stock_after) for r in rows] == [
         ("initial_stock", 5, 5),
-        ("adjustment", 4, 9),
+        ("restock", 4, 9),
     ]
+    below_zero = staff_client.post(
+        f"{ADMIN}/inventory/{variant_id}/adjust",
+        json={"delta": -10, "reason": "adjustment"},
+        headers=csrf(staff_client),
+    )
+    assert below_zero.status_code == 422
 
 
 def test_status_management_controls_storefront_visibility(staff_client: TestClient) -> None:

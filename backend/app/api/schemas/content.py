@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from app.api.schemas.catalog import CategoryOut, ImageOut, ProductSummaryOut
+from app.application.content_settings import order_policies
 from app.application.use_cases.homepage import PublicationInfo, SectionView
 from app.application.use_cases.site import PublicLink, PublicSite
 from app.domain.entities.content import Collection
@@ -164,6 +165,8 @@ class SettingsOut(_Out):
     whatsapp_number: str | None
     whatsapp_message_template: str | None
     payment_options: list[dict[str, Any]]
+    shipping_settings: dict[str, Any] = {}
+    order_policies: dict[str, Any] = {}
     default_product_sort: str
     default_low_stock_threshold: int
     seo_defaults: dict[str, Any]
@@ -197,6 +200,8 @@ class PublicSiteOut(BaseModel):
     whatsapp_ordering_enabled: bool
     whatsapp_message_template: str | None
     payment_options: list[dict[str, Any]]
+    shipping: dict[str, Any] = {}
+    order_policies: dict[str, Any] = {}
     default_product_sort: str
     seo: dict[str, Any]
     og_image: ImageOut | None
@@ -234,6 +239,13 @@ class PublicSiteOut(BaseModel):
             whatsapp_ordering_enabled=s.whatsapp_ordering_enabled,
             whatsapp_message_template=s.whatsapp_message_template,
             payment_options=[o for o in s.payment_options if o.get("enabled")],
+            shipping={
+                k: v
+                for k, v in (s.shipping_settings or {}).items()
+                if k in ("free_shipping_threshold", "shipping_message", "delivery_estimate")
+            },
+            # Normalised with the same defaults the after-sale service enforces.
+            order_policies=order_policies(s.order_policies).model_dump(mode="json"),
             default_product_sort=s.default_product_sort,
             seo={
                 "title_suffix": s.seo_defaults.get("title_suffix"),

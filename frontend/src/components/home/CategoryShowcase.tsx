@@ -6,6 +6,7 @@ import { ProductArt, type ArtTone, artFor } from "@/components/product/ProductAr
 import { Skeleton } from "@/components/ui/Feedback";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { isRenderableImage } from "@/lib/catalog/adapters";
+import { framedImage } from "@/lib/media/frames";
 import { listCategories, topLevel } from "@/lib/catalog/api";
 import type { CategoryShowcaseSection } from "@/lib/content/types";
 import styles from "./CategoryShowcase.module.css";
@@ -30,20 +31,21 @@ export async function CategoryShowcase({ section }: { section: CategoryShowcaseS
           title={section.title}
           link={section.showViewAll === false ? undefined : { label: "Shop all", href: "/shop" }}
         />
-        <ul className={`${styles.grid} ${styles[`count${Math.min(categories.length, 6)}`] ?? ""}`}>
+        <ul className={styles.grid}>
           {categories.map((category, index) => {
             const art = artFor(category.slug, category.name);
             const tone = TILE_TONES[index % TILE_TONES.length]!;
+            const photo = category.image ? framedImage(category.image, "category").url : null;
             return (
               <li key={category.id} className={styles.item}>
                 <Link href={`/category/${category.slug}`} className={`${styles.tile} ${styles[tone]}`}>
                   <span className={styles.visual}>
-                    {category.image && isRenderableImage(category.image.url) ? (
+                    {photo && isRenderableImage(photo) ? (
                       <Image
-                        src={category.image.url}
+                        src={photo}
                         alt=""
                         fill
-                        sizes="(min-width: 960px) 30vw, 50vw"
+                        sizes="(min-width: 960px) 25vw, 50vw"
                         className={styles.photo}
                       />
                     ) : (
@@ -72,7 +74,7 @@ export function CategoryShowcaseSkeleton() {
       <Skeleton width="16rem" height="2.25rem" radius="var(--radius-pill)" />
       <div className={styles.grid} style={{ marginTop: "var(--space-8)" }}>
         {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} height="16rem" radius="var(--radius-lg)" />
+          <Skeleton key={i} className={styles.skeletonTile} radius="var(--radius-lg)" />
         ))}
       </div>
     </div>

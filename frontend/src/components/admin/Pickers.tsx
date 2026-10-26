@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ImagePlus, Search, Upload, X } from "lucide-react";
+import { Crop, ImagePlus, Search, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -11,6 +11,8 @@ import { useMutation, useResource } from "@/lib/admin/hooks";
 import type { AdminProductSummary, MediaAsset } from "@/lib/admin/types";
 import { isRenderableImage } from "@/lib/catalog/adapters";
 import { formatMoney } from "@/lib/format";
+import { FRAMES, type ImageFrame, frameRatio } from "@/lib/media/frames";
+import { CropFrame, ImageCropDialog } from "./ImageCropper";
 import { ErrorState, LoadingState, adminStyles as styles } from "./Kit";
 
 export const MEDIA_PURPOSES = [
@@ -104,22 +106,36 @@ export function MediaPicker({
   );
 }
 
-/** A single-image field: preview + choose/remove. Loads the preview for an existing id. */
+/** Preview of an asset as a frame shows it: the saved crop, or the original centred. */
+export function FramedThumb({ asset, frame, className }: { asset: MediaAsset; frame: ImageFrame; className?: string }) {
+  if (!isRenderableImage(asset.url)) return null;
+  const crop = asset.crops?.[frame];
+  return <CropFrame src={asset.url} rect={crop ?? null} frame={frame} className={className} />;
+}
+
+/**
+ * A single-image field: preview + choose/remove. Loads the preview for an existing id. With a
+ * `frame`, the preview takes that frame's shape and a new image opens the crop editor.
+ */
 export function MediaField({
   label,
   hint,
   value,
   onChange,
   purpose,
+  frame,
 }: {
   label: string;
   hint?: string;
   value: string | null;
   onChange: (id: string | null, asset?: MediaAsset) => void;
   purpose: string;
+  frame?: ImageFrame;
 }) {
   const [open, setOpen] = useState(false);
+  const [cropping, setCropping] = useState(false);
   const [asset, setAsset] = useState<MediaAsset | null>(null);
+  const cropped = Boolean(frame && asset?.crops?.[frame]);
 
   useEffect(() => {
     if (!value) {
@@ -134,11 +150,21 @@ export function MediaField({
     <div className={styles.field}>
       <span className={styles.label}>{label}</span>
       <div className={styles.mediaField}>
-        <span className={styles.mediaFieldPreview}>{asset && <MediaThumb url={asset.url} alt={asset.alt_text ?? ""} />}</span>
+        <span
+          className={styles.mediaFieldPreview}
+          style={frame ? { aspectRatio: frameRatio(frame), width: "auto", height: "5.5rem" } : undefined}
+        >
+          {asset && (frame ? <FramedThumb asset={asset} frame={frame} /> : <MediaThumb url={asset.url} alt={asset.alt_text ?? ""} />)}
+        </span>
         <div className={styles.actions}>
           <Button size="sm" variant="soft" iconStart={<ImagePlus aria-hidden="true" />} onClick={() => setOpen(true)}>
             {value ? "Change" : "Choose image"}
           </Button>
+          {frame && asset && asset.visibility === "public" && (
+            <Button size="sm" variant="outline" iconStart={<Crop aria-hidden="true" />} onClick={() => setCropping(true)}>
+              {cropped ? "Edit crop" : "Crop"}
+            </Button>
+          )}
           {value && (
             <Button size="sm" variant="ghost" iconStart={<X aria-hidden="true" />} onClick={() => onChange(null)}>
               Remove
@@ -147,6 +173,13 @@ export function MediaField({
         </div>
       </div>
       {hint && <p className={styles.hint}>{hint}</p>}
+      {frame && asset && (
+        <p className={styles.hint}>
+          {cropped
+            ? `Cropped for ${FRAMES[frame].usage.toLowerCase()} (${FRAMES[frame].ratioWidth}:${FRAMES[frame].ratioHeight}).`
+            : `Not cropped yet — the storefront centres it in a ${FRAMES[frame].ratioWidth}:${FRAMES[frame].ratioHeight} frame.`}
+        </p>
+      )}
       <MediaPicker
         open={open}
         onClose={() => setOpen(false)}
@@ -154,8 +187,19 @@ export function MediaField({
         onSelect={(selected) => {
           setAsset(selected);
           onChange(selected.id, selected);
+          // Frame a new or not-yet-cropped image straight away.
+          if (frame && selected.visibility === "public" && !selected.crops?.[frame]) setCropping(true);
         }}
       />
+      {cropping && frame && asset && (
+        <ImageCropDialog
+          open
+          asset={asset}
+          frame={frame}
+          onClose={() => setCropping(false)}
+          onSaved={(updated) => setAsset(updated)}
+        />
+      )}
     </div>
   );
 }

@@ -231,6 +231,10 @@ export interface SiteContent {
     whatsappOrdering: boolean;
     guestCheckout: boolean;
     currency: string;
+    /** Shop-written delivery wording; the estimate is the shop's own, not a courier promise. */
+    shipping: { freeThreshold: string | null; message: string; estimate: string };
+    /** Which after-sale requests customers may raise (all off unless the shop enables them). */
+    orderPolicies: OrderPolicy;
   };
   footer: {
     blurb: string;
@@ -240,4 +244,13 @@ export interface SiteContent {
   };
   contact: ContactDetails;
   pages: Record<string, { title: string; summary: string }>;
+}
+
+export interface OrderPolicy {
+  cancellation: boolean;
+  returns: boolean;
+  exchanges: boolean;
+  returnWindowDays: number;
+  reasons: string[];
+  note: string;
 }

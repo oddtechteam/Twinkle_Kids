@@ -68,7 +68,9 @@ def homepage_overview(_: ContentManagerDep, builder: HomepageBuilderDep) -> Home
 
 
 @router.post("/homepage/sections", response_model=CreatedOut, status_code=status.HTTP_201_CREATED)
-def create_section(body: SectionIn, user: ContentManagerDep, builder: HomepageBuilderDep) -> CreatedOut:
+def create_section(
+    body: SectionIn, user: ContentManagerDep, builder: HomepageBuilderDep
+) -> CreatedOut:
     return CreatedOut(id=builder.create(body.to_input(), actor_id=user.id))
 
 
@@ -110,7 +112,9 @@ def set_section_products(
 
 
 @router.post("/homepage/publish", response_model=PublicationOut)
-def publish_homepage(body: PublishIn, user: ContentManagerDep, builder: HomepageBuilderDep) -> PublicationOut:
+def publish_homepage(
+    body: PublishIn, user: ContentManagerDep, builder: HomepageBuilderDep
+) -> PublicationOut:
     builder.publish(actor_id=user.id, note=body.note)
     return PublicationOut.of(builder.publication())
 
@@ -124,7 +128,9 @@ def get_settings(_: SettingsManagerDep, service: SettingsServiceDep) -> Settings
 
 
 @router.patch("/settings", response_model=SettingsOut)
-def update_settings(body: SettingsPatch, user: SettingsManagerDep, service: SettingsServiceDep) -> SettingsOut:
+def update_settings(
+    body: SettingsPatch, user: SettingsManagerDep, service: SettingsServiceDep
+) -> SettingsOut:
     return SettingsOut.of(service.update(body.changes(), actor_id=user.id))
 
 
@@ -158,7 +164,9 @@ def update_navigation_item(
 
 
 @router.delete("/navigation/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_navigation_item(item_id: UUID, user: ContentManagerDep, service: NavigationServiceDep) -> None:
+def delete_navigation_item(
+    item_id: UUID, user: ContentManagerDep, service: NavigationServiceDep
+) -> None:
     service.delete(item_id, actor_id=user.id)
 
 
@@ -181,7 +189,9 @@ def get_page(page_id: UUID, _: ContentManagerDep, service: PageServiceDep) -> Pa
 
 
 @router.put("/pages/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
-def update_page(page_id: UUID, body: PageIn, user: ContentManagerDep, service: PageServiceDep) -> None:
+def update_page(
+    page_id: UUID, body: PageIn, user: ContentManagerDep, service: PageServiceDep
+) -> None:
     service.update(page_id, body.to_input(), actor_id=user.id)
 
 
@@ -194,7 +204,9 @@ def delete_page(page_id: UUID, user: ContentManagerDep, service: PageServiceDep)
 
 
 @router.get("/shipping-rules", response_model=list[ShippingRuleOut])
-def list_shipping_rules(_: SettingsManagerDep, service: ShippingServiceDep) -> list[ShippingRuleOut]:
+def list_shipping_rules(
+    _: SettingsManagerDep, service: ShippingServiceDep
+) -> list[ShippingRuleOut]:
     return [ShippingRuleOut.model_validate(r) for r in service.list()]
 
 
@@ -213,7 +225,9 @@ def update_shipping_rule(
 
 
 @router.delete("/shipping-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_shipping_rule(rule_id: UUID, user: SettingsManagerDep, service: ShippingServiceDep) -> None:
+def delete_shipping_rule(
+    rule_id: UUID, user: SettingsManagerDep, service: ShippingServiceDep
+) -> None:
     service.delete(rule_id, actor_id=user.id)
 
 
@@ -240,6 +254,7 @@ def update_size_chart(
 
 
 @router.delete("/size-charts/{chart_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_size_chart(chart_id: UUID, user: CatalogManagerDep, service: SizeChartServiceDep) -> None:
+def delete_size_chart(
+    chart_id: UUID, user: CatalogManagerDep, service: SizeChartServiceDep
+) -> None:
     service.delete(chart_id, actor_id=user.id)
-

@@ -15,8 +15,8 @@ import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { useToast } from "@/components/ui/Toast";
 import type { ProductDetail, ProductVariant } from "@/lib/api/types";
 import { useBag } from "@/lib/bag/BagProvider";
-import { bagErrorMessage, startWhatsAppRequest } from "@/lib/bag/api";
 import type { IconName } from "@/lib/content/types";
+import { useWhatsAppOrder } from "@/components/whatsapp/WhatsAppHandoff";
 import { ProductGallery } from "./ProductGallery";
 import { WishlistButton } from "./WishlistButton";
 import styles from "./ProductExperience.module.css";
@@ -49,6 +49,7 @@ export function ProductExperience({ product, whatsappEnabled, eyebrow, details }
   const toast = useToast();
   const router = useRouter();
   const progress = useNavigationProgress();
+  const whatsapp = useWhatsAppOrder();
   const sizeGroup = useId();
   const colourGroup = useId();
   const errorId = useId();
@@ -113,28 +114,7 @@ export function ProductExperience({ product, whatsappEnabled, eyebrow, details }
   async function orderOnWhatsApp() {
     const variant = requireSelection();
     if (!variant) return;
-    // Open the tab inside the click so pop-up blockers allow it, then point it at WhatsApp.
-    const tab = window.open("", "_blank");
-    setBusy("whatsapp");
-    try {
-      const link = await startWhatsAppRequest([{ variantId: variant.id, quantity }]);
-      if (tab) {
-        tab.opener = null;
-        tab.location.href = link.url;
-      } else {
-        window.location.href = link.url;
-      }
-      toast.show({
-        tone: "info",
-        title: "Continue in WhatsApp",
-        description: `Send the pre-filled message to place your request (ref. ${link.reference}). We'll confirm availability and delivery there.`,
-      });
-    } catch (error) {
-      tab?.close();
-      toast.show({ tone: "warning", title: "Couldn't open WhatsApp", description: bagErrorMessage(error) });
-    } finally {
-      setBusy(null);
-    }
+    await whatsapp.start([{ variantId: variant.id, quantity }]);
   }
 
   // Nothing purchasable at all, or the chosen option is out of stock.
@@ -281,7 +261,7 @@ export function ProductExperience({ product, whatsappEnabled, eyebrow, details }
                 size="lg"
                 fullWidth
                 onClick={() => void orderOnWhatsApp()}
-                loading={busy === "whatsapp"}
+                loading={whatsapp.opening}
                 disabled={busy !== null}
                 iconStart={<MessageCircle aria-hidden="true" />}
               >
@@ -306,6 +286,8 @@ export function ProductExperience({ product, whatsappEnabled, eyebrow, details }
 
         <div className={styles.details}>{details}</div>
       </div>
+
+      {whatsapp.dialog}
 
       {chartUsable && chart && (
         <Dialog open={sizeChartOpen} onClose={() => setSizeChartOpen(false)} title={chart.name ?? "Size guide"}>

@@ -1,18 +1,67 @@
 "use client";
 
-import { RefreshCw, Trash2, Upload } from "lucide-react";
+import { Crop, RefreshCw, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AdminPage, ConfirmDialog, ErrorState, LoadingState, TextInput, adminStyles as styles } from "@/components/admin/Kit";
-import { MEDIA_PURPOSES, MediaThumb } from "@/components/admin/Pickers";
+import { ImageCropDialog } from "@/components/admin/ImageCropper";
+import { FramedThumb, MEDIA_PURPOSES, MediaThumb } from "@/components/admin/Pickers";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { adminApi } from "@/lib/admin/api";
 import { useMutation, useResource } from "@/lib/admin/hooks";
 import type { MediaAsset } from "@/lib/admin/types";
 import { formatDateTime } from "@/lib/format";
+import { FRAMES, FRAME_NAMES, type ImageFrame } from "@/lib/media/frames";
 
 const PAGE = 48;
+
+/** Frames each library purpose is normally shown in; listed first in the crop section. */
+const PURPOSE_FRAMES: Record<string, ImageFrame[]> = {
+  product_image: ["product"],
+  category_image: ["category"],
+  collection_image: ["collection", "banner"],
+  homepage_banner: ["hero", "banner"],
+};
+
+function CropSection({ asset, onChanged }: { asset: MediaAsset; onChanged: (asset: MediaAsset) => void }) {
+  const [editing, setEditing] = useState<ImageFrame | null>(null);
+  const primary = PURPOSE_FRAMES[asset.purpose] ?? [];
+  const frames = [...primary, ...FRAME_NAMES.filter((f) => !primary.includes(f))];
+
+  return (
+    <div className={styles.stack}>
+      <div>
+        <span className={styles.label}>Storefront crops</span>
+        <p className={styles.hint}>
+          Each frame keeps its own crop. The original file is never changed, so you can re-crop at any time.
+        </p>
+      </div>
+      <ul className={styles.cropList}>
+        {frames.map((frame) => {
+          const crop = asset.crops?.[frame];
+          return (
+            <li key={frame} className={styles.cropItem}>
+              <span className={styles.cropThumb}>
+                <FramedThumb asset={asset} frame={frame} />
+              </span>
+              <span className={styles.cropText}>
+                <strong>
+                  {FRAMES[frame].label} · {FRAMES[frame].ratioWidth}:{FRAMES[frame].ratioHeight}
+                </strong>
+                <span className={styles.hint}>{crop ? `Cropped ${formatDateTime(crop.updated_at)}` : "Centred automatically"}</span>
+              </span>
+              <Button size="sm" variant={crop ? "outline" : "soft"} iconStart={<Crop aria-hidden="true" />} onClick={() => setEditing(frame)}>
+                {crop ? "Edit" : "Crop"}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+      {editing && <ImageCropDialog open asset={asset} frame={editing} onClose={() => setEditing(null)} onSaved={onChanged} />}
+    </div>
+  );
+}
 const ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
 
 function kb(bytes: number) {
@@ -45,6 +94,7 @@ function AssetDialog({
         <p className={styles.hint}>
           {asset.width}×{asset.height}px · {kb(asset.size_bytes)} · {asset.content_type} · uploaded {formatDateTime(asset.created_at)}
         </p>
+        {asset.visibility === "public" && <CropSection asset={asset} onChanged={onChanged} />}
         <TextInput label="Alt text" hint="Describe the image for screen readers and search engines." value={alt} onChange={setAlt} maxLength={300} />
         <div className={styles.actions}>
           <Button
@@ -67,7 +117,9 @@ function AssetDialog({
               const file = e.target.files?.[0];
               e.target.value = "";
               if (!file) return;
-              const res = await run(() => adminApi.replaceMedia(asset.id, file), { success: "Image replaced everywhere it is used" });
+              const res = await run(() => adminApi.replaceMedia(asset.id, file), {
+                success: "Image replaced everywhere it is used — crop it again for each frame",
+              });
               if (res.ok) onChanged(res.result);
             }}
           />

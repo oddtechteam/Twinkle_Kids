@@ -108,6 +108,22 @@ class UserSessionModel(Base):
     user_agent: Mapped[str | None] = mapped_column(String(255))
 
 
+class PasswordResetTokenModel(Base):
+    """Single-use password reset token. Only the SHA-256 of the emailed token is stored."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = created_at_column()
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    requested_ip: Mapped[str | None] = mapped_column(String(45))
+
+
 class AddressModel(Base):
     __tablename__ = "addresses"
 

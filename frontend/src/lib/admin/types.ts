@@ -24,6 +24,8 @@ export interface AdminProductSummary {
   in_stock: boolean;
   primary_image: ProductImage | null;
   badges: string[];
+  is_featured?: boolean;
+  related_product_ids?: string[];
   status: ProductStatus;
   published_at: string | null;
 }
@@ -66,6 +68,8 @@ export interface AdminProductDetail {
   size_chart_id: string | null;
   collection_ids: string[];
   badges: string[];
+  is_featured?: boolean;
+  related_product_ids?: string[];
   variants: AdminVariant[];
   images: ProductImage[];
   categories: { id: string; name: string; slug: string }[];
@@ -95,6 +99,8 @@ export interface ProductPayload {
   primary_category_id: string | null;
   collection_ids: string[];
   badges: string[];
+  is_featured?: boolean;
+  related_product_ids?: string[];
   variants: {
     id: string | null;
     sku: string;
@@ -167,7 +173,7 @@ export type SectionType =
   | "contact"
   | "rich_text";
 
-export type SelectionMode = "none" | "manual" | "category" | "collection" | "newest";
+export type SelectionMode = "none" | "manual" | "category" | "collection" | "newest" | "bestsellers" | "featured";
 
 export interface Section {
   id: string;
@@ -226,6 +232,26 @@ export interface MediaAsset {
   bucket: string;
   object_key: string;
   original_filename: string | null;
+  /** Saved crops keyed by frame; x/y/width/height are fractions of the original image. */
+  crops: Partial<Record<string, MediaCrop>>;
+}
+
+export interface MediaCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  url: string;
+  output_width: number;
+  output_height: number;
+  updated_at: string;
+}
+
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface PaymentOption {
@@ -256,7 +282,29 @@ export interface StoreSettings {
   default_product_sort: string;
   default_low_stock_threshold: number;
   seo_defaults: { title_suffix?: string; default_description?: string; og_image_media_id?: string | null };
+  shipping_settings: Partial<ShippingSettings>;
+  order_policies: Partial<OrderPolicies>;
   updated_at: string | null;
+}
+
+export interface ShippingSettings {
+  free_shipping_threshold: string | null;
+  pin_mode: "all" | "allow_list";
+  allowed_pin_prefixes: string[];
+  blocked_pin_codes: string[];
+  shipping_message: string;
+  delivery_estimate: string;
+  unserviceable_message: string;
+}
+
+export interface OrderPolicies {
+  cancellation_enabled: boolean;
+  cancellable_statuses: string[];
+  returns_enabled: boolean;
+  exchanges_enabled: boolean;
+  return_window_days: number;
+  reasons: string[];
+  policy_note: string;
 }
 
 export type NavigationMenu = "header" | "footer" | "mobile";

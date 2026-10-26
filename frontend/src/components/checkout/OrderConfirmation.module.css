@@ -1,0 +1,123 @@
+.page {
+  display: grid;
+  gap: var(--space-5);
+  padding-block: var(--space-6) var(--space-11);
+}
+
+.hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-5);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(160deg, var(--tk-ivory), var(--tk-blush-soft));
+  text-align: center;
+}
+
+.check {
+  color: var(--tk-success);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-black);
+  color: var(--color-heading);
+}
+
+.reference {
+  font-size: var(--text-lg);
+}
+
+.reference strong {
+  font-family: var(--font-heading);
+  letter-spacing: 0.04em;
+}
+
+.lede {
+  max-width: 34rem;
+  color: var(--color-text-muted);
+}
+
+.instructions {
+  max-width: 34rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--tk-paper);
+  font-weight: var(--weight-bold);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--tk-paper);
+}
+
+.cardTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+}
+
+.lines {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.name {
+  font-weight: var(--weight-bold);
+}
+
+.name a:hover {
+  color: var(--color-accent);
+}
+
+.muted {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.amount {
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.totals dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.grand {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+}
+
+.address {
+  font-style: normal;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

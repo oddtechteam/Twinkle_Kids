@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -23,7 +24,10 @@ def create_app(settings: Settings | None = None, *, container: Container | None 
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # Off the event loop, and not awaited: the server accepts requests immediately.
+        warm = asyncio.get_running_loop().run_in_executor(None, container.warm_up)
         yield
+        warm.cancel()
         container.dispose()
 
     docs_enabled = settings.show_docs

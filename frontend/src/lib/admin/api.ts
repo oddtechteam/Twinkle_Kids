@@ -15,6 +15,7 @@ import type {
   AdminProductSummary,
   Dashboard,
   HomepageAdmin,
+  CropRect,
   MediaAsset,
   NavigationItem,
   NavigationMenu,
@@ -114,6 +115,15 @@ export const adminApi = {
   updateMedia: (id: string, alt_text: string | null) => apiSend<MediaAsset>("PATCH", `/admin/media/${id}`, { alt_text }),
   mediaUsage: (id: string) => apiFetch<{ in_use: boolean; places: string[] }>(`/admin/media/${id}/usage`),
   deleteMedia: (id: string) => apiSend<void>("DELETE", `/admin/media/${id}`),
+  /** The server cuts the frame from the kept original and stores an optimised WebP. */
+  saveCrop: (id: string, frame: string, rect: CropRect) =>
+    apiFetch<MediaAsset>(`/admin/media/${id}/crops/${frame}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rect),
+      timeoutMs: 60000,
+    }),
+  removeCrop: (id: string, frame: string) => apiSend<MediaAsset>("DELETE", `/admin/media/${id}/crops/${frame}`),
 
   // --- settings & content ---
   settings: () => apiFetch<StoreSettings>("/admin/settings"),

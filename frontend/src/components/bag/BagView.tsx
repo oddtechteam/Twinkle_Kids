@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CircleAlert, MessageCircle, RotateCcw, ShoppingBag, Trash2 } from "lucide-react";
+import { CircleAlert, Lock, MessageCircle, RotateCcw, ShoppingBag, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { ProductImage } from "@/components/product/ProductImage";
@@ -13,8 +13,8 @@ import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { useToast } from "@/components/ui/Toast";
 import type { Cart, CartLine } from "@/lib/api/types";
 import { useBag } from "@/lib/bag/BagProvider";
-import { bagErrorMessage, startWhatsAppRequest } from "@/lib/bag/api";
 import { formatMoney, plural } from "@/lib/format";
+import { useWhatsAppOrder } from "@/components/whatsapp/WhatsAppHandoff";
 import styles from "./BagView.module.css";
 
 const CRUMBS = [{ label: "Home", href: "/" }, { label: "Shopping bag" }];
@@ -185,36 +185,9 @@ function BagLine({ line }: { line: CartLine }) {
 }
 
 function Summary({ cart, whatsappEnabled }: { cart: Cart; whatsappEnabled: boolean }) {
-  const toast = useToast();
-  const [opening, setOpening] = useState(false);
+  const whatsapp = useWhatsAppOrder();
   const orderable = cart.lines.filter((line) => line.available);
   const savings = Number(cart.savings) > 0;
-
-  async function orderOnWhatsApp() {
-    const tab = window.open("", "_blank"); // inside the click, so pop-up blockers allow it
-    setOpening(true);
-    try {
-      const link = await startWhatsAppRequest(
-        orderable.map((line) => ({ variantId: line.variant_id, quantity: line.quantity })),
-      );
-      if (tab) {
-        tab.opener = null;
-        tab.location.href = link.url;
-      } else {
-        window.location.href = link.url;
-      }
-      toast.show({
-        tone: "info",
-        title: "Continue in WhatsApp",
-        description: `Send the pre-filled message to place your request (ref. ${link.reference}). Your bag stays here until your order is confirmed.`,
-      });
-    } catch (error) {
-      tab?.close();
-      toast.show({ tone: "warning", title: "Couldn't open WhatsApp", description: bagErrorMessage(error) });
-    } finally {
-      setOpening(false);
-    }
-  }
 
   return (
     <aside className={styles.summary} aria-labelledby="bag-summary-title">
@@ -246,27 +219,40 @@ function Summary({ cart, whatsappEnabled }: { cart: Cart; whatsappEnabled: boole
       )}
 
       <div className={styles.summaryActions}>
+        <ButtonLink
+          href="/checkout"
+          size="lg"
+          fullWidth
+          iconStart={<Lock aria-hidden="true" />}
+          aria-disabled={cart.has_issues || orderable.length === 0 ? true : undefined}
+          onClick={(event) => {
+            if (cart.has_issues || orderable.length === 0) event.preventDefault();
+          }}
+        >
+          Checkout
+        </ButtonLink>
+        {cart.has_issues && <p className={styles.summaryNote}>Please fix the items that need attention to check out.</p>}
         {whatsappEnabled && (
           <Button
             fullWidth
             size="lg"
-            onClick={() => void orderOnWhatsApp()}
-            loading={opening}
+            variant="soft"
+            onClick={() =>
+              void whatsapp.start(orderable.map((line) => ({ variantId: line.variant_id, quantity: line.quantity })))
+            }
+            loading={whatsapp.opening}
             disabled={orderable.length === 0}
             iconStart={<MessageCircle aria-hidden="true" />}
           >
             Order on WhatsApp
           </Button>
         )}
-        <p className={styles.summaryNote}>
-          {whatsappEnabled
-            ? "We'll confirm availability, delivery and payment with you on WhatsApp. Online checkout is coming soon."
-            : "Online checkout is coming soon. Your bag is saved for you until then."}
-        </p>
+        <p className={styles.summaryNote}>No payment is taken online. The shop confirms your order and payment details with you.</p>
         <ButtonLink href="/shop" variant="outline" fullWidth>
           Continue shopping
         </ButtonLink>
       </div>
+      {whatsapp.dialog}
     </aside>
   );
 }

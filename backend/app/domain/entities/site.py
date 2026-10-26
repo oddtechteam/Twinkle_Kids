@@ -30,6 +30,8 @@ class StoreSettings:
     whatsapp_number: str | None = None
     whatsapp_message_template: str | None = None
     payment_options: list[dict[str, Any]] = field(default_factory=list)
+    shipping_settings: dict[str, Any] = field(default_factory=dict)
+    order_policies: dict[str, Any] = field(default_factory=dict)
     default_product_sort: str = "featured"
     default_low_stock_threshold: int = 3
     seo_defaults: dict[str, Any] = field(default_factory=dict)

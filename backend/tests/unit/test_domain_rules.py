@@ -91,7 +91,6 @@ def test_ordering_rejects_duplicates_and_preserves_order() -> None:
             },
             "source category",
         ),
-        ({"section_type": HomepageSectionType.HERO_BANNER}, "desktop image"),
     ],
 )
 def test_homepage_section_rules(overrides: dict[str, object], message: str) -> None:
@@ -106,14 +105,19 @@ def test_homepage_section_rules(overrides: dict[str, object], message: str) -> N
 
 def test_section_settings_are_validated_per_type() -> None:
     clean = validate_section_settings(
-        HomepageSectionType.HERO_BANNER, {"headline": " Little Smiles ", "cta_href": "/shop"}
+        HomepageSectionType.HERO_BANNER,
+        {
+            "headline": {"lead": " Little Smiles "},
+            "primary_cta": {"label": "Shop", "href": "/shop"},
+        },
     )
-    assert clean["headline"] == "Little Smiles"
+    assert clean["headline"]["lead"] == "Little Smiles"
     with pytest.raises(DomainValidationError, match=r"(?i)extra inputs"):
         validate_section_settings(HomepageSectionType.RICH_TEXT, {"body": "x", "html": "<b>"})
-    with pytest.raises(DomainValidationError, match="cta_href"):
+    with pytest.raises(DomainValidationError, match="cta"):
         validate_section_settings(
-            HomepageSectionType.PROMO_BANNER, {"cta_href": "javascript:alert(1)"}
+            HomepageSectionType.PRODUCT_GRID,
+            {"cta": {"label": "Go", "href": "javascript:alert(1)"}},
         )
     with pytest.raises(DomainValidationError):
         validate_section_settings(HomepageSectionType.PRODUCT_GRID, {"columns_desktop": 9})

@@ -113,13 +113,17 @@ class SqlAlchemyDashboardQueries:
         }
         start = (now - timedelta(days=days - 1)).date()
         orders_by_day = [
-            DailyCount(day=start + timedelta(days=i), orders=int(per_day.get(start + timedelta(days=i), 0)))
+            DailyCount(
+                day=start + timedelta(days=i), orders=int(per_day.get(start + timedelta(days=i), 0))
+            )
             for i in range(days)
         ]
 
         placed = s.scalar(select(func.sum(OrderModel.grand_total)).where(not_cancelled))
         confirmed = s.scalar(
-            select(func.sum(OrderModel.grand_total)).where(OrderModel.status.in_(CONFIRMED_STATUSES))
+            select(func.sum(OrderModel.grand_total)).where(
+                OrderModel.status.in_(CONFIRMED_STATUSES)
+            )
         )
         paid = s.scalar(
             select(func.sum(OrderModel.grand_total)).where(

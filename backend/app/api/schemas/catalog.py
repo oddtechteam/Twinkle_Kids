@@ -27,6 +27,12 @@ class PriceOut(_Out):
     currency: str = "INR"
 
 
+class FramedImageOut(_Out):
+    url: str
+    width: int
+    height: int
+
+
 class ImageOut(_Out):
     media_asset_id: UUID
     url: str
@@ -34,6 +40,8 @@ class ImageOut(_Out):
     width: int
     height: int
     variant_id: UUID | None = None
+    # Admin-cropped renditions keyed by frame (product, category, collection, hero, banner).
+    crops: dict[str, FramedImageOut] = {}
 
 
 class CategoryRefOut(_Out):
@@ -148,6 +156,8 @@ class AdminProductDetailOut(ProductDetailOut):
     variants: list[AdminVariantOut]  # type: ignore[assignment]
     size_chart_id: UUID | None = None
     collection_ids: list[UUID] = []
+    is_featured: bool = False
+    related_product_ids: list[UUID] = []
     created_at: datetime
     updated_at: datetime
 
@@ -232,6 +242,8 @@ class ReviewOut(_Out):
     body: str | None
     author: str | None
     created_at: datetime
+    verified_purchase: bool = False
+    images: list[ImageOut] = []
 
 
 class ReviewSummaryOut(_Out):
@@ -250,3 +262,8 @@ class SitemapOut(_Out):
     categories: list[SitemapEntryOut]
     collections: list[SitemapEntryOut]
     pages: list[SitemapEntryOut]
+
+
+class RecommendationsOut(_Out):
+    curated: list[ProductSummaryOut]
+    bestsellers: list[ProductSummaryOut]

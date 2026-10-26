@@ -4,20 +4,21 @@ from uuid import UUID
 from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 
 from app.api.deps import (
+    CropMediaDep,
     DeleteMediaDep,
     GetMediaDep,
     ListMediaDep,
     MediaManagerDep,
     ReplaceMediaDep,
-    UpdateMediaDep,
     SettingsDep,
+    UpdateMediaDep,
     UploadMediaDep,
 )
 from app.api.schemas.admin import MediaPatchIn
 from app.api.schemas.content import MediaUsageOut
-from app.api.schemas.media import AdminMediaAssetOut, MediaAssetOut
+from app.api.schemas.media import AdminMediaAssetOut, CropIn, MediaAssetOut
 from app.application.use_cases.media import UploadMediaCommand
-from app.domain.entities.media import MediaPurpose, MediaVisibility
+from app.domain.entities.media import CropRect, ImageFrame, MediaPurpose, MediaVisibility
 from app.domain.errors import MediaTooLargeError
 
 public_router = APIRouter(prefix="/media", tags=["media"])
@@ -110,3 +111,19 @@ def replace_media(
         asset_id, data=data, declared_content_type=file.content_type, filename=file.filename
     )
     return AdminMediaAssetOut.from_view(view)
+
+
+@admin_router.put("/{asset_id}/crops/{frame}", response_model=AdminMediaAssetOut)
+def save_crop(
+    asset_id: UUID, frame: ImageFrame, body: CropIn, _: MediaManagerDep, use_case: CropMediaDep
+) -> AdminMediaAssetOut:
+    """Cut the frame's composition from the original (which is kept) and store it as WebP."""
+    rect = CropRect(x=body.x, y=body.y, width=body.width, height=body.height)
+    return AdminMediaAssetOut.from_view(use_case.execute(asset_id, frame, rect))
+
+
+@admin_router.delete("/{asset_id}/crops/{frame}", response_model=AdminMediaAssetOut)
+def remove_crop(
+    asset_id: UUID, frame: ImageFrame, _: MediaManagerDep, use_case: CropMediaDep
+) -> AdminMediaAssetOut:
+    return AdminMediaAssetOut.from_view(use_case.remove(asset_id, frame))

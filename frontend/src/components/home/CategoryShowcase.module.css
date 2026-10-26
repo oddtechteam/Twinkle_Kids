@@ -8,19 +8,7 @@
 @media (min-width: 960px) {
   .grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-auto-rows: 15rem;
     gap: var(--space-5);
-  }
-
-  /* Bento rhythm: the first category gets a feature tile. */
-  .grid > .item:first-child {
-    grid-column: span 2;
-    grid-row: span 2;
-  }
-
-  .count2 > .item:first-child,
-  .count3 > .item:first-child {
-    grid-row: span 1;
   }
 }
 
@@ -34,8 +22,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 13rem;
+  aspect-ratio: 1; /* the "category" crop frame: every tile has the same shape */
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--tile-bg);
@@ -134,4 +121,9 @@
 
 .tile:hover .arrow {
   transform: rotate(45deg);
+}
+
+.skeletonTile {
+  display: block;
+  aspect-ratio: 1;
 }

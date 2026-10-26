@@ -1,6 +1,7 @@
 """SQLAlchemy repositories for CMS content: settings, homepage builder, collections admin,
 navigation, website pages, shipping rules and size charts."""
 
+import builtins
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
@@ -40,6 +41,8 @@ from app.infrastructure.db.models.marketing import ShippingRuleModel
 # --- Store settings ---------------------------------------------------------------------------
 
 _SETTINGS_FIELDS = (
+    "shipping_settings",
+    "order_policies",
     "store_name",
     "tagline",
     "currency_code",
@@ -78,7 +81,14 @@ class SqlAlchemySettingsRepository:
     def get(self) -> StoreSettings:
         row = self._row()
         values = {name: getattr(row, name) for name in _SETTINGS_FIELDS}
-        for json_field in ("theme", "announcement", "social_links", "seo_defaults"):
+        for json_field in (
+            "theme",
+            "announcement",
+            "social_links",
+            "seo_defaults",
+            "shipping_settings",
+            "order_policies",
+        ):
             values[json_field] = dict(values[json_field] or {})
         values["payment_options"] = list(values["payment_options"] or [])
         return StoreSettings(**values, updated_at=row.updated_at)
@@ -289,7 +299,7 @@ class SqlAlchemyCollectionAdminRepository:
             self._session.scalars(select(CollectionModel.id).where(CollectionModel.id.in_(wanted)))
         )
 
-    def collections_for_product(self, product_id: UUID) -> list[UUID]:
+    def collections_for_product(self, product_id: UUID) -> builtins.list[UUID]:
         return list(
             self._session.scalars(
                 select(CollectionProductModel.collection_id).where(
@@ -298,7 +308,9 @@ class SqlAlchemyCollectionAdminRepository:
             )
         )
 
-    def set_product_collections(self, product_id: UUID, collection_ids: list[UUID]) -> None:
+    def set_product_collections(
+        self, product_id: UUID, collection_ids: builtins.list[UUID]
+    ) -> None:
         current = set(self.collections_for_product(product_id))
         wanted = set(collection_ids)
         if current - wanted:
@@ -392,7 +404,7 @@ class SqlAlchemyNavigationRepository:
     def delete(self, item_id: UUID) -> None:
         self._session.execute(delete(NavigationItemModel).where(NavigationItemModel.id == item_id))
 
-    def reorder(self, item_ids: list[UUID]) -> None:
+    def reorder(self, item_ids: builtins.list[UUID]) -> None:
         for position, item_id in enumerate(item_ids):
             self._session.execute(
                 update(NavigationItemModel)
@@ -425,7 +437,9 @@ class SqlAlchemyPageRepository:
     def list(self) -> Sequence[WebsitePage]:
         return [
             _page(r)
-            for r in self._session.scalars(select(WebsitePageModel).order_by(WebsitePageModel.title))
+            for r in self._session.scalars(
+                select(WebsitePageModel).order_by(WebsitePageModel.title)
+            )
         ]
 
     def get(self, page_id: UUID) -> WebsitePage | None:
@@ -556,7 +570,8 @@ class SqlAlchemySizeChartRepository:
 
     def list(self) -> Sequence[SizeChart]:
         return [
-            _chart(r) for r in self._session.scalars(select(SizeChartModel).order_by(SizeChartModel.name))
+            _chart(r)
+            for r in self._session.scalars(select(SizeChartModel).order_by(SizeChartModel.name))
         ]
 
     def get(self, chart_id: UUID) -> SizeChart | None:

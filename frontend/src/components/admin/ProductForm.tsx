@@ -1,12 +1,12 @@
 "use client";
 
-import { ImagePlus, Plus, Trash2, Wand2 } from "lucide-react";
+import { Crop, ImagePlus, Plus, Trash2, Wand2 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { adminApi } from "@/lib/admin/api";
 import { useResource } from "@/lib/admin/hooks";
-import type { AdminProductDetail, ProductPayload, ProductStatus } from "@/lib/admin/types";
+import type { AdminProductDetail, MediaAsset, ProductPayload, ProductStatus } from "@/lib/admin/types";
 import { formatMoney } from "@/lib/format";
 import {
   Card,
@@ -20,7 +20,8 @@ import {
   Toggle,
   adminStyles as styles,
 } from "./Kit";
-import { MediaPicker, MediaThumb } from "./Pickers";
+import { ImageCropDialog } from "./ImageCropper";
+import { MediaPicker, MediaThumb, ProductPicker } from "./Pickers";
 
 interface VariantRow {
   key: string;
@@ -38,6 +39,8 @@ interface VariantRow {
 interface MediaRow {
   media_asset_id: string;
   url: string;
+  /** The saved 4:5 product crop, shown as the thumbnail when there is one. */
+  crop_url?: string | null;
   alt_text: string;
   variant_sku: string;
 }
@@ -61,6 +64,8 @@ export interface ProductFormState {
   primary_category_id: string;
   collection_ids: string[];
   badges: string[];
+  is_featured: boolean;
+  related: { id: string; name: string }[];
   variants: VariantRow[];
   media: MediaRow[];
 }
@@ -88,6 +93,8 @@ export function emptyProduct(): ProductFormState {
     primary_category_id: "",
     collection_ids: [],
     badges: [],
+    is_featured: false,
+    related: [],
     variants: [],
     media: [],
   };
@@ -114,6 +121,8 @@ export function fromDetail(p: AdminProductDetail): ProductFormState {
     primary_category_id: p.primary_category_id ?? "",
     collection_ids: p.collection_ids,
     badges: p.badges,
+    is_featured: p.is_featured ?? false,
+    related: (p.related_product_ids ?? []).map((id) => ({ id, name: "" })),
     variants: p.variants.map((v) => ({
       key: newKey(),
       id: v.id,
@@ -129,6 +138,7 @@ export function fromDetail(p: AdminProductDetail): ProductFormState {
     media: p.images.map((img) => ({
       media_asset_id: img.media_asset_id,
       url: img.url,
+      crop_url: img.crops?.product?.url ?? null,
       alt_text: img.alt_text ?? "",
       variant_sku: (img.variant_id && skuById.get(img.variant_id)) || "",
     })),
@@ -157,6 +167,8 @@ export function toPayload(f: ProductFormState): ProductPayload {
     primary_category_id: orNull(f.primary_category_id),
     collection_ids: f.collection_ids,
     badges: f.badges,
+    is_featured: f.is_featured,
+    related_product_ids: f.related.map((r) => r.id),
     variants: f.variants.map((v) => ({
       id: v.id,
       sku: v.sku.trim(),
@@ -209,6 +221,7 @@ export function ProductForm({
   const [f, setF] = useState(initial);
   const [touched, setTouched] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [cropping, setCropping] = useState<MediaAsset | null>(null);
   const [genSizes, setGenSizes] = useState<string[]>([]);
   const [genColours, setGenColours] = useState<string[]>([]);
   const categories = useResource(adminApi.categories, "categories");
@@ -350,7 +363,12 @@ export function ProductForm({
                 <TextInput label="Colour swatch (hex)" placeholder="#F5CDD3" value={v.colour_hex} onChange={(val) => setVariant(v.key, { colour_hex: val })} maxLength={7} />
                 <MoneyInput label="Selling price override" value={v.selling_price} onChange={(val) => setVariant(v.key, { selling_price: val })} placeholder="inherit" />
                 <MoneyInput label="MRP override" value={v.original_price} onChange={(val) => setVariant(v.key, { original_price: val })} placeholder="inherit" />
-                <TextInput label="Stock" type="number" min={0} value={v.stock_quantity} onChange={(val) => setVariant(v.key, { stock_quantity: val })} />
+                {v.id ? (
+                  // Live stock changes only through Inventory (atomic, ledgered), never by overwriting it here.
+                  <TextInput label="Stock (adjust in Inventory)" value={v.stock_quantity} onChange={() => undefined} readOnly disabled />
+                ) : (
+                  <TextInput label="Opening stock" type="number" min={0} value={v.stock_quantity} onChange={(val) => setVariant(v.key, { stock_quantity: val })} />
+                )}
               </div>
             </div>
           ))}
@@ -358,7 +376,7 @@ export function ProductForm({
 
         <Card
           title="Images"
-          hint="Drag to reorder; the first image is the main product image."
+          hint="Drag to reorder; the first image is the main product image. Crop each photo to the 4:5 product frame so every card lines up."
           actions={
             <Button size="sm" variant="soft" iconStart={<ImagePlus aria-hidden="true" />} onClick={() => setPicking(true)}>
               Add image
@@ -377,7 +395,7 @@ export function ProductForm({
                 <div className={styles.grid2} style={{ alignItems: "center" }}>
                   <span className={styles.cellTitle}>
                     <span className={styles.thumb}>
-                      <MediaThumb url={m.url} alt={m.alt_text} />
+                      <MediaThumb url={m.crop_url ?? m.url} alt={m.alt_text} />
                     </span>
                     <input
                       className={styles.input}
@@ -408,14 +426,25 @@ export function ProductForm({
                 </div>
               )}
               renderActions={(m) => (
-                <button
-                  type="button"
-                  className={`${styles.iconButton} ${styles.dangerIcon}`}
-                  onClick={() => set("media", f.media.filter((x) => x.media_asset_id !== m.media_asset_id))}
-                  aria-label="Remove image from product"
-                >
-                  <Trash2 size={15} aria-hidden="true" />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    onClick={() => adminApi.mediaAsset(m.media_asset_id).then(setCropping).catch(() => undefined)}
+                    aria-label={m.crop_url ? "Edit crop" : "Crop image"}
+                    title={m.crop_url ? "Edit crop" : "Crop to the product frame"}
+                  >
+                    <Crop size={15} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.iconButton} ${styles.dangerIcon}`}
+                    onClick={() => set("media", f.media.filter((x) => x.media_asset_id !== m.media_asset_id))}
+                    aria-label="Remove image from product"
+                  >
+                    <Trash2 size={15} aria-hidden="true" />
+                  </button>
+                </>
               )}
             />
           )}
@@ -425,9 +454,25 @@ export function ProductForm({
             purpose="product_image"
             onSelect={(asset) => {
               if (f.media.some((m) => m.media_asset_id === asset.id)) return;
-              set("media", [...f.media, { media_asset_id: asset.id, url: asset.url, alt_text: asset.alt_text ?? "", variant_sku: "" }]);
+              const crop_url = asset.crops?.product?.url ?? null;
+              set("media", [...f.media, { media_asset_id: asset.id, url: asset.url, crop_url, alt_text: asset.alt_text ?? "", variant_sku: "" }]);
+              if (!crop_url && asset.visibility === "public") setCropping(asset); // frame new photos right away
             }}
           />
+          {cropping && (
+            <ImageCropDialog
+              open
+              asset={cropping}
+              frame="product"
+              onClose={() => setCropping(null)}
+              onSaved={(asset) =>
+                setF((state) => ({
+                  ...state,
+                  media: state.media.map((x) => (x.media_asset_id === asset.id ? { ...x, crop_url: asset.crops?.product?.url ?? null } : x)),
+                }))
+              }
+            />
+          )}
         </Card>
 
         <Card title="Search engine listing">
@@ -489,8 +534,58 @@ export function ProductForm({
             options={(charts.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
           />
           <TagInput label="Badges" hint="Up to 3 short labels, e.g. “New season”" values={f.badges} onChange={(v) => set("badges", v)} max={3} />
+          <Toggle label="Featured product" checked={f.is_featured} onChange={(v) => set("is_featured", v)} />
+          <p className={styles.hint}>Featured products appear in “Featured” homepage sections.</p>
         </Card>
+        <RelatedProducts value={f.related} selfId={saved?.id ?? null} onChange={(v) => set("related", v)} />
       </div>
     </form>
+  );
+}
+
+/** Admin-curated "You may also like" products for this product (shown before bestsellers). */
+function RelatedProducts({
+  value,
+  selfId,
+  onChange,
+}: {
+  value: { id: string; name: string }[];
+  selfId: string | null;
+  onChange: (next: { id: string; name: string }[]) => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const names = useResource(
+    () => Promise.all(value.filter((r) => !r.name).map((r) => adminApi.product(r.id).then((p) => [p.id, p.name] as const))),
+    value.map((r) => r.id).join(","),
+  );
+  const label = (r: { id: string; name: string }) => r.name || names.data?.find(([id]) => id === r.id)?.[1] || "Loading…";
+  return (
+    <Card title="Related products" hint="Shown as “You may also like” on this product's page. Up to 12, in this order.">
+      {value.length === 0 ? (
+        <p className={styles.hint}>None yet — bestsellers from the same category are shown instead (when there is order data).</p>
+      ) : (
+        <ol className={styles.list}>
+          {value.map((r, index) => (
+            <li key={r.id} className={styles.listRow}>
+              <span>
+                {index + 1}. {label(r)}
+              </span>
+              <Button size="sm" variant="ghost" iconStart={<Trash2 aria-hidden="true" size={14} />} onClick={() => onChange(value.filter((x) => x.id !== r.id))} aria-label={`Remove ${label(r)}`}>
+                Remove
+              </Button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <Button size="sm" variant="outline" iconStart={<Plus aria-hidden="true" size={14} />} disabled={value.length >= 12} onClick={() => setPicking(true)}>
+        Add related products
+      </Button>
+      <ProductPicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        excludeIds={[...value.map((r) => r.id), ...(selfId ? [selfId] : [])]}
+        onAdd={(products) => onChange([...value, ...products.map((p) => ({ id: p.id, name: p.name }))].slice(0, 12))}
+      />
+    </Card>
   );
 }

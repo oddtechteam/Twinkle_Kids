@@ -71,6 +71,8 @@ class ProductInput:
     primary_category_id: UUID | None = None
     media: list[MediaInput] = field(default_factory=list)
     badges: list[str] = field(default_factory=list)
+    is_featured: bool = False
+    related_product_ids: list[UUID] = field(default_factory=list)
     collection_ids: list[UUID] | None = None  # None = leave collection membership unchanged
 
 
@@ -293,7 +295,9 @@ class ProductCommands:
                     colour_hex=clean_optional(item.colour_hex),
                     selling_price_override=item.selling_price_override,
                     original_price_override=item.original_price_override,
-                    stock_quantity=item.stock_quantity,
+                    # Existing variants keep their stored stock (change it via inventory
+                    # adjustments); the submitted quantity is the opening stock of new ones.
+                    stock_quantity=match.stock_quantity if match else item.stock_quantity,
                     position=position,
                     is_active=item.is_active,
                 )
@@ -347,6 +351,11 @@ class ProductCommands:
         product.variants = variants
         product.media = media_links
         product.badges = [b.strip() for b in data.badges if b.strip()]
+        product.is_featured = data.is_featured
+        related = list(dict.fromkeys(data.related_product_ids))
+        if set(related) - self._products.existing_ids(related):
+            raise DomainValidationError("Some related products no longer exist.")
+        product.related_product_ids = related
         product.change_status(data.status, now=self._clock())  # validates the whole aggregate
         return {vid: v.stock_quantity for vid, v in previous_variants.items()}
 

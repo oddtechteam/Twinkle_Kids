@@ -16,6 +16,7 @@ import {
   Toggle,
   adminStyles as styles,
 } from "@/components/admin/Kit";
+import { OrderPoliciesCard, ShippingSettingsCard } from "@/components/admin/StorePolicies";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { adminApi } from "@/lib/admin/api";
@@ -47,7 +48,7 @@ function RuleDialog({ rule, onClose, onSaved }: { rule: ShippingRule | null; onC
       priority: Number.parseInt(priority || "100", 10),
       is_active: active,
     };
-    const res = await run(() => (rule ? adminApi.updateShippingRule(rule.id, body) : adminApi.createShippingRule(body)), {
+    const res = await run(() => (rule ? adminApi.updateShippingRule(rule.id, body) : adminApi.createShippingRule(body).then(() => undefined)), {
       success: rule ? "Shipping rule saved" : "Shipping rule added",
     });
     if (res.ok) onSaved();
@@ -75,6 +76,7 @@ function RuleDialog({ rule, onClose, onSaved }: { rule: ShippingRule | null; onC
 
 export default function ShippingRulesPage() {
   const rules = useResource(adminApi.shippingRules, "shipping");
+  const settings = useResource(adminApi.settings, "settings");
   const { run, pending } = useMutation();
   const [editing, setEditing] = useState<ShippingRule | null | "new">(null);
   const [deleting, setDeleting] = useState<ShippingRule | null>(null);
@@ -106,8 +108,8 @@ export default function ShippingRulesPage() {
 
   return (
     <AdminPage
-      title="Shipping rules"
-      description="Fees by order value. Rules are listed in priority order."
+      title="Shipping & order policy"
+      description="Fees by order value (rules are checked in priority order), where you deliver, and what customers may request after ordering."
       breadcrumbs={[{ label: "Shipping" }]}
       actions={
         <Button iconStart={<Plus aria-hidden="true" />} onClick={() => setEditing("new")}>
@@ -118,6 +120,13 @@ export default function ShippingRulesPage() {
       {rules.error && <ErrorState message={rules.error} onRetry={rules.reload} />}
       {rules.loading && !rules.data && <LoadingState label="Loading shipping rules…" />}
       {rules.data && <DataTable columns={columns} rows={rules.data} rowKey={(r) => r.id} empty={<p className={styles.hint}>No shipping rules yet.</p>} />}
+      {settings.error && <ErrorState message={settings.error} onRetry={settings.reload} />}
+      {settings.data && (
+        <div className={styles.twoCol}>
+          <ShippingSettingsCard settings={settings.data} onSaved={() => void settings.reload()} />
+          <OrderPoliciesCard settings={settings.data} onSaved={() => void settings.reload()} />
+        </div>
+      )}
       {editing !== null && (
         <RuleDialog
           key={editing === "new" ? "new" : editing.id}

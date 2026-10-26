@@ -1,0 +1,348 @@
+.page {
+  padding-block: var(--space-6) var(--space-11);
+}
+
+.title {
+  margin-top: var(--space-5);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-black);
+  color: var(--color-heading);
+}
+
+.blocking {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--tk-gold-soft);
+  color: var(--tk-gold-text);
+  font-weight: var(--weight-bold);
+}
+
+.blocking p {
+  flex: 1 1 16rem;
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-7);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    align-items: start;
+  }
+}
+
+.main {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--tk-paper);
+}
+
+.sectionTitle {
+  padding: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+  color: var(--color-heading);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--tk-paper);
+  font: inherit;
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  border-color: var(--color-focus);
+}
+
+.invalid {
+  border-color: var(--tk-coral-strong);
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.fieldError {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--tk-coral-strong);
+}
+
+.hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.hint a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.warning {
+  font-weight: var(--weight-bold);
+  color: var(--tk-coral-strong);
+}
+
+.choices {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.choice input {
+  margin-top: 0.3rem;
+  accent-color: var(--tk-navy);
+}
+
+.choice > span {
+  display: grid;
+  gap: 2px;
+}
+
+.chosen {
+  border-color: var(--tk-navy);
+  background: var(--tk-ivory);
+}
+
+.muted {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--weight-bold);
+}
+
+.checkbox input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--tk-navy);
+}
+
+.errorSummary {
+  padding: var(--space-4) var(--space-5);
+  border: 1.5px solid var(--tk-coral);
+  border-radius: var(--radius-md);
+  background: var(--tk-coral-soft);
+  color: var(--tk-coral-strong);
+}
+
+.errorSummary:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.errorSummary ul {
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.errorTitle {
+  font-weight: var(--weight-heavy);
+}
+
+/* ---- Summary ---- */
+
+.summary {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--tk-paper);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (min-width: 1000px) {
+  .summary {
+    position: sticky;
+    top: calc(var(--header-height) + var(--space-5));
+  }
+}
+
+.summaryTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-heavy);
+}
+
+.items {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.thumb {
+  position: relative;
+  overflow: visible;
+}
+
+.thumb > div {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.qty {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding-inline: 0.3rem;
+  border-radius: var(--radius-pill);
+  background: var(--tk-navy);
+  color: var(--tk-paper);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-heavy);
+}
+
+.itemInfo {
+  min-width: 0;
+}
+
+.itemName {
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.itemTotal {
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.coupon {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.couponLabel {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.couponLabel input {
+  width: 100%;
+  min-height: 2.5rem;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.couponLabel:focus-within {
+  border-color: var(--color-focus);
+}
+
+.applied {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--tk-success);
+}
+
+.linkButton {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.totals dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.discount {
+  color: var(--tk-success);
+  font-weight: var(--weight-bold);
+}
+
+.grand {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+}

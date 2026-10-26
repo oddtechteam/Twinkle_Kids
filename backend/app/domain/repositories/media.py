@@ -1,8 +1,17 @@
+import builtins
 from collections.abc import Iterable, Sequence
 from typing import Protocol
 from uuid import UUID
 
-from app.domain.entities.media import ImageInfo, MediaAsset, MediaPurpose, StoredObject
+from app.domain.entities.media import (
+    CropRect,
+    FrameSpec,
+    ImageInfo,
+    MediaAsset,
+    MediaPurpose,
+    RenderedImage,
+    StoredObject,
+)
 
 
 class ObjectStorage(Protocol):
@@ -29,6 +38,12 @@ class ImageInspector(Protocol):
     def inspect(self, data: bytes) -> ImageInfo: ...
 
 
+class ImageCropper(Protocol):
+    """Cuts ``rect`` out of an image and encodes an optimised rendition for ``spec``."""
+
+    def render(self, data: bytes, rect: CropRect, spec: FrameSpec) -> RenderedImage: ...
+
+
 class MediaAssetRepository(Protocol):
     def add(self, asset: MediaAsset) -> None: ...
 
@@ -44,7 +59,7 @@ class MediaAssetRepository(Protocol):
 
     def in_use(self, asset_id: UUID) -> bool: ...
 
-    def usage(self, asset_id: UUID) -> list[str]:
+    def usage(self, asset_id: UUID) -> builtins.list[str]:
         """Human-readable places that reference the asset (products, categories, settings...)."""
         ...
 

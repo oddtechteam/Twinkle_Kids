@@ -13,16 +13,41 @@ from app.application.dto.catalog import (
     ProductDetail,
     ProductFilters,
     ProductSummary,
+    Recommendations,
     ReviewSummary,
     SitemapView,
 )
-from app.application.ports import CatalogQueries
+from app.application.ports import CatalogQueries, RecommendationQueries
 from app.domain.errors import DomainValidationError, NotFoundError
 
 
 class CatalogReader:
-    def __init__(self, queries: CatalogQueries) -> None:
+    def __init__(
+        self, queries: CatalogQueries, recommendations: RecommendationQueries | None = None
+    ) -> None:
         self._queries = queries
+        self._recommendations = recommendations
+
+    def recommendations(self, slug: str, *, limit: int = 8) -> Recommendations:
+        """Admin-curated picks first; bestsellers in the same category from real order data."""
+        detail = self.product(slug)
+        if self._recommendations is None:
+            return Recommendations(curated=[], bestsellers=[])
+        curated = [
+            p
+            for p in self._queries.ordered_products(self._recommendations.related_ids(detail.id))
+            if p.id != detail.id
+        ][:limit]
+        bestsellers: list[ProductSummary] = []
+        if detail.categories:
+            ids = self._recommendations.bestseller_ids(
+                limit=limit + 1, category_slug=detail.categories[0].slug
+            )
+            seen = {p.id for p in curated} | {detail.id}
+            bestsellers = [p for p in self._queries.ordered_products(ids) if p.id not in seen][
+                :limit
+            ]
+        return Recommendations(curated=curated, bestsellers=bestsellers)
 
     def list_products(self, filters: ProductFilters) -> Page[ProductSummary]:
         if filters.page < 1:

@@ -4,6 +4,7 @@
  */
 
 import type { Category, ProductImage, ProductSort, ProductSummary } from "@/lib/api/types";
+import { type ImageFrame, framedImage } from "@/lib/media/frames";
 import type {
   HomepageSection,
   IconName,
@@ -35,6 +36,15 @@ export interface PublicSite {
   currency_code: string;
   guest_checkout_enabled: boolean;
   whatsapp_ordering_enabled: boolean;
+  shipping?: { free_shipping_threshold?: string | null; shipping_message?: string; delivery_estimate?: string };
+  order_policies?: {
+    cancellation_enabled?: boolean;
+    returns_enabled?: boolean;
+    exchanges_enabled?: boolean;
+    return_window_days?: number;
+    reasons?: string[];
+    policy_note?: string;
+  };
   seo: { title_suffix?: string | null; default_description?: string | null };
   og_image: ProductImage | null;
   menus: Record<"header" | "footer" | "mobile", PublicLink[]>;
@@ -74,9 +84,11 @@ export interface PublishedHomepage {
 const THEMES: Theme[] = ["navy", "blush", "gold", "ivory"];
 const ARTS = ["dress", "tee", "romper", "skirt"] as const;
 
-function media(image: ProductImage | null | undefined, fallbackAlt: string): MediaRef | null {
+/** A CMS image as the section's frame shows it: the admin crop when saved, else the original. */
+function media(image: ProductImage | null | undefined, fallbackAlt: string, frame?: ImageFrame): MediaRef | null {
   if (!image) return null;
-  return { src: image.url, alt: image.alt_text ?? fallbackAlt, width: image.width, height: image.height };
+  const framed = frame ? framedImage(image, frame) : image;
+  return { src: framed.url, alt: image.alt_text ?? fallbackAlt, width: framed.width, height: framed.height };
 }
 
 function str(value: unknown): string | undefined {
@@ -123,8 +135,8 @@ export function mapSections(homepage: PublishedHomepage): HomepageSection[] {
           primaryCta: cta(s.primary_cta),
           secondaryCta: cta(s.secondary_cta),
           trust: list<{ icon: IconName; label: string }>(s.trust),
-          image: media(section.desktop_image, title),
-          mobileImage: media(section.mobile_image, title),
+          image: media(section.desktop_image, title, "hero"),
+          mobileImage: media(section.mobile_image, title, "hero"),
           theme: theme(s.theme, "blush"),
           layout: s.layout === "image-left" ? "image-left" : "image-right",
         });
@@ -167,7 +179,7 @@ export function mapSections(homepage: PublishedHomepage): HomepageSection[] {
           title,
           body: str(s.body) ?? section.subtitle ?? undefined,
           cta: cta(s.cta),
-          image: media(section.desktop_image, title),
+          image: media(section.desktop_image, title, "banner"),
           theme: theme(s.theme, "navy"),
           imagePosition: s.image_position === "left" ? "left" : "right",
         });
@@ -183,7 +195,7 @@ export function mapSections(homepage: PublishedHomepage): HomepageSection[] {
             title: c.name,
             caption: c.description ?? undefined,
             href: `/collections/${c.slug}`,
-            image: media(c.image, c.name),
+            image: media(c.image, c.name, "collection"),
             theme: THEMES[i % THEMES.length]!,
             art: ARTS[i % ARTS.length]!,
           })),
@@ -201,7 +213,7 @@ export function mapSections(homepage: PublishedHomepage): HomepageSection[] {
           cta:
             cta(s.cta) ??
             (section.view_all_href ? { label: "Explore the collection", href: section.view_all_href } : undefined),
-          image: media(section.desktop_image ?? section.collection.image, section.collection.name),
+          image: media(section.desktop_image ?? section.collection.image, section.collection.name, "banner"),
           theme: theme(s.theme, "blush"),
           products: section.products,
         });
@@ -314,6 +326,19 @@ export function mapSite(site: PublicSite, fallback: SiteContent, homepage: Publi
       whatsappOrdering: Boolean(site.whatsapp_ordering_enabled && site.contact.whatsapp),
       guestCheckout: site.guest_checkout_enabled,
       currency: site.currency_code || "INR",
+      shipping: {
+        freeThreshold: site.shipping?.free_shipping_threshold ?? null,
+        message: site.shipping?.shipping_message ?? "",
+        estimate: site.shipping?.delivery_estimate ?? "",
+      },
+      orderPolicies: {
+        cancellation: Boolean(site.order_policies?.cancellation_enabled),
+        returns: Boolean(site.order_policies?.returns_enabled),
+        exchanges: Boolean(site.order_policies?.exchanges_enabled),
+        returnWindowDays: site.order_policies?.return_window_days ?? 7,
+        reasons: site.order_policies?.reasons ?? [],
+        note: site.order_policies?.policy_note ?? "",
+      },
     },
     announcement: {
       visible: Boolean(announcement.enabled && announcement.message),

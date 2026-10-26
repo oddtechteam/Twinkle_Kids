@@ -84,9 +84,9 @@ class WhatsAppRequestIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[WhatsAppItemIn] = Field(min_length=1, max_length=MAX_CART_LINES)
-    customer_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None = (
-        None
-    )
+    customer_name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)] | None
+    ) = None
 
 
 class WhatsAppLinkOut(_Out):

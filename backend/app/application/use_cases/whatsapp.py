@@ -55,6 +55,7 @@ def whatsapp_digits(number: str | None) -> str | None:
 
 def build_message(
     *,
+    store_name: str,
     intro: str,
     reference: str,
     lines: Sequence[OrderLineSnapshot],
@@ -62,7 +63,14 @@ def build_message(
     currency: str,
     storefront_url: str,
 ) -> str:
-    parts = [intro.strip(), "", f"Request reference: {reference}", ""]
+    # *bold* is WhatsApp formatting. No customer details go into the URL — only the items.
+    parts = [
+        f"*{store_name} — order request*",
+        intro.strip(),
+        "",
+        f"Request reference: {reference}",
+        "",
+    ]
     for index, line in enumerate(lines, start=1):
         options = " · ".join(
             f"{label}: {value}"
@@ -74,14 +82,17 @@ def build_message(
             parts.append(f"   {options}")
         parts.append(f"   SKU: {line.sku}")
         parts.append(
-            f"   Qty {line.quantity} × {_money(line.unit_price.selling, currency)}"
+            f"   Qty {line.quantity} × {_money(line.unit_price.selling, currency)}"  # noqa: RUF001 - intended typography
             f" = {_money(line.priced.total, currency)}"
         )
         if storefront_url:
             parts.append(f"   {storefront_url.rstrip('/')}/products/{line.product_slug}")
         parts.append("")
-    parts.append(f"Estimated total: {_money(subtotal, currency)} (before delivery)")
-    parts.append("Please confirm availability, delivery and payment details.")
+    parts.append(f"*Estimated total: {_money(subtotal, currency)}* (before delivery)")
+    parts.append(
+        "Prices are estimates until the shop confirms. Please confirm availability, "
+        "delivery charges and payment details."
+    )
     return "\n".join(parts)
 
 
@@ -150,10 +161,10 @@ class WhatsAppOrdering:
         subtotal = calculate_totals(line.priced for line in lines).subtotal
         reference = self._new_reference()
         intro = (
-            settings.whatsapp_message_template
-            or f"Hello {settings.store_name}! I'd like to order:"
+            settings.whatsapp_message_template or f"Hello {settings.store_name}! I'd like to order:"
         )
         message = build_message(
+            store_name=settings.store_name,
             intro=intro,
             reference=reference,
             lines=lines,

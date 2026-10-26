@@ -22,6 +22,8 @@ export interface ProductImage {
   width: number;
   height: number;
   variant_id?: string | null;
+  /** Admin-cropped renditions keyed by frame (see lib/media/frames.ts). */
+  crops?: Partial<Record<string, { url: string; width: number; height: number }>>;
 }
 
 export interface CategoryRef {
@@ -122,7 +124,7 @@ export interface CategoryDetail {
   products: ProductList;
 }
 
-export type ProductSort = "featured" | "newest" | "price_asc" | "price_desc" | "name_asc";
+export type ProductSort = "featured" | "bestselling" | "newest" | "price_asc" | "price_desc" | "name_asc";
 
 /** Filter options available within a listing scope (GET /products/facets). */
 export interface Facets {
@@ -149,12 +151,21 @@ export interface Review {
   body: string | null;
   author: string | null;
   created_at: string;
+  /** Set by the server only when the reviewer has a real order for this product. */
+  verified_purchase?: boolean;
+  images?: ProductImage[];
 }
 
 export interface ReviewSummary {
   average: Money | null;
   count: number;
   items: Review[];
+}
+
+/** GET /products/{slug}/recommendations: shop-curated picks, then real same-category bestsellers. */
+export interface Recommendations {
+  curated: ProductSummary[];
+  bestsellers: ProductSummary[];
 }
 
 export interface ShippingRule {
@@ -235,3 +246,96 @@ export interface CustomerProfile {
 export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; message: string };
+
+// --- Checkout & orders (all money calculated by the backend) ----------------------------------
+
+export type PaymentMethod = "cash_on_delivery" | "upi_manual" | "bank_transfer" | "other";
+
+export interface PostalAddress {
+  full_name: string;
+  phone: string;
+  line1: string;
+  line2?: string | null;
+  landmark?: string | null;
+  city: string;
+  state: string;
+  postal_code: string;
+}
+
+export interface SavedAddress extends PostalAddress {
+  id: string;
+  label: string | null;
+  is_default: boolean;
+  country_code: string;
+}
+
+export interface PaymentOption {
+  method: PaymentMethod;
+  label: string;
+  instructions: string;
+}
+
+export interface CheckoutQuote {
+  bag: Cart;
+  currency_code: string;
+  subtotal: Money;
+  discount_total: Money;
+  shipping_total: Money;
+  /** False when no delivery rule matched: the shop confirms any delivery charge. */
+  shipping_configured: boolean;
+  grand_total: Money;
+  coupon_code: string | null;
+  coupon_error: string | null;
+  payment_methods: PaymentOption[];
+  guest_checkout_enabled: boolean;
+  signed_in: boolean;
+  can_place_order: boolean;
+  blocking_reason: string | null;
+}
+
+export interface OrderLine {
+  product_name: string;
+  product_slug: string | null;
+  sku: string;
+  size: string | null;
+  colour: string | null;
+  image_url: string | null;
+  unit_selling_price: Money;
+  unit_original_price: Money | null;
+  quantity: number;
+  line_total: Money;
+}
+
+/** A customer's view of an order: what was bought — no internal status or tracking. */
+export interface CustomerOrder {
+  order_number: string;
+  placed_at: string;
+  payment_method: PaymentMethod | null;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  shipping_address: PostalAddress & { country_code?: string };
+  currency_code: string;
+  subtotal: Money;
+  discount_total: Money;
+  shipping_total: Money;
+  grand_total: Money;
+  coupon_code: string | null;
+  customer_note: string | null;
+  lines: OrderLine[];
+  payment_instructions?: string | null;
+}
+
+export interface CustomerOrderSummary {
+  order_number: string;
+  placed_at: string;
+  grand_total: Money;
+  item_count: number;
+}
+
+export interface CustomerOrderList {
+  items: CustomerOrderSummary[];
+  total: number;
+  page: number;
+  pages: number;
+}

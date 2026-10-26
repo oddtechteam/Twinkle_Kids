@@ -1,5 +1,6 @@
 """Collection management with independent, per-collection product ordering."""
 
+import builtins
 from collections.abc import Sequence
 from dataclasses import dataclass
 from uuid import UUID, uuid4
@@ -72,7 +73,9 @@ class CollectionService:
         self._log(actor_id, "collection.updated", collection_id)
         self._uow.commit()
 
-    def set_status(self, collection_id: UUID, status: PublishStatus, *, actor_id: UUID | None) -> None:
+    def set_status(
+        self, collection_id: UUID, status: PublishStatus, *, actor_id: UUID | None
+    ) -> None:
         collection = self.get(collection_id)
         collection.status = status
         self._admin.save(collection)
@@ -84,7 +87,9 @@ class CollectionService:
         ids = self._collections.product_ids(collection_id)
         return self._queries.ordered_products(ids, include_inactive=True)
 
-    def set_products(self, collection_id: UUID, product_ids: list[UUID], *, actor_id: UUID | None) -> None:
+    def set_products(
+        self, collection_id: UUID, product_ids: builtins.list[UUID], *, actor_id: UUID | None
+    ) -> None:
         """Replace membership and ordering in one step (list index = position)."""
         self.get(collection_id)
         ordering = validate_ordering(product_ids)
@@ -94,7 +99,9 @@ class CollectionService:
         self._log(actor_id, "collection.products_set", collection_id, len(ordering))
         self._uow.commit()
 
-    def _apply(self, collection: Collection, data: CollectionInput, *, existing_id: UUID | None) -> None:
+    def _apply(
+        self, collection: Collection, data: CollectionInput, *, existing_id: UUID | None
+    ) -> None:
         name = data.name.strip()
         if not name:
             raise DomainValidationError("Collection name is required.")
@@ -112,7 +119,9 @@ class CollectionService:
         collection.seo_title = clean_optional(data.seo_title)
         collection.seo_description = clean_optional(data.seo_description)
 
-    def _log(self, actor_id: UUID | None, action: str, collection_id: UUID, count: int | None = None) -> None:
+    def _log(
+        self, actor_id: UUID | None, action: str, collection_id: UUID, count: int | None = None
+    ) -> None:
         self._audit.record(
             actor_user_id=actor_id,
             action=action,

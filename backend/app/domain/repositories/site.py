@@ -1,3 +1,4 @@
+import builtins
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Protocol
@@ -61,9 +62,11 @@ class CollectionAdminRepository(Protocol):
 
     def existing_ids(self, ids: Sequence[UUID]) -> set[UUID]: ...
 
-    def collections_for_product(self, product_id: UUID) -> list[UUID]: ...
+    def collections_for_product(self, product_id: UUID) -> builtins.list[UUID]: ...
 
-    def set_product_collections(self, product_id: UUID, collection_ids: list[UUID]) -> None:
+    def set_product_collections(
+        self, product_id: UUID, collection_ids: builtins.list[UUID]
+    ) -> None:
         """Add/remove one product's memberships; new memberships are appended at the end."""
         ...
 
@@ -79,7 +82,7 @@ class NavigationRepository(Protocol):
 
     def delete(self, item_id: UUID) -> None: ...
 
-    def reorder(self, item_ids: list[UUID]) -> None: ...
+    def reorder(self, item_ids: builtins.list[UUID]) -> None: ...
 
 
 class PageRepository(Protocol):

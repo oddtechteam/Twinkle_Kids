@@ -60,6 +60,7 @@ export function BagProvider({ children }: { children: ReactNode }) {
   }, [run]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads external data (API / session storage) on mount
     void refresh();
     // Keep the header count honest when the bag changes in another tab.
     const onFocus = () => void refresh();

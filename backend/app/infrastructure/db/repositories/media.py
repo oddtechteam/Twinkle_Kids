@@ -1,10 +1,20 @@
-from collections.abc import Iterable, Sequence
+import builtins
+from collections.abc import Iterable, Mapping, Sequence
+from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
-from app.domain.entities.media import MediaAsset, MediaPurpose, MediaVisibility
+from app.domain.entities.media import (
+    CropRect,
+    ImageCrop,
+    ImageFrame,
+    MediaAsset,
+    MediaPurpose,
+    MediaVisibility,
+)
 from app.infrastructure.db.models.catalog import CategoryModel, ProductMediaModel, ProductModel
 from app.infrastructure.db.models.content import (
     CollectionModel,
@@ -12,6 +22,44 @@ from app.infrastructure.db.models.content import (
     StoreSettingsModel,
 )
 from app.infrastructure.db.models.media import MediaAssetModel
+
+
+def crops_from_json(raw: Mapping[str, Any] | None) -> dict[ImageFrame, ImageCrop]:
+    """Stored crops; entries for unknown frames or with a bad shape are ignored."""
+    crops: dict[ImageFrame, ImageCrop] = {}
+    for name, value in (raw or {}).items():
+        try:
+            crops[ImageFrame(name)] = ImageCrop(
+                rect=CropRect(
+                    x=float(value["x"]),
+                    y=float(value["y"]),
+                    width=float(value["width"]),
+                    height=float(value["height"]),
+                ),
+                object_key=str(value["object_key"]),
+                width=int(value["output_width"]),
+                height=int(value["output_height"]),
+                updated_at=datetime.fromisoformat(value["updated_at"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return crops
+
+
+def crops_to_json(crops: Mapping[ImageFrame, ImageCrop]) -> dict[str, Any]:
+    return {
+        frame.value: {
+            "x": crop.rect.x,
+            "y": crop.rect.y,
+            "width": crop.rect.width,
+            "height": crop.rect.height,
+            "object_key": crop.object_key,
+            "output_width": crop.width,
+            "output_height": crop.height,
+            "updated_at": crop.updated_at.isoformat(),
+        }
+        for frame, crop in crops.items()
+    }
 
 
 def _to_entity(row: MediaAssetModel) -> MediaAsset:
@@ -29,6 +77,7 @@ def _to_entity(row: MediaAssetModel) -> MediaAsset:
         created_at=row.created_at,
         original_filename=row.original_filename,
         alt_text=row.alt_text,
+        crops=crops_from_json(row.crops),
     )
 
 
@@ -51,6 +100,7 @@ class SqlAlchemyMediaAssetRepository:
                 sha256=asset.sha256,
                 original_filename=asset.original_filename,
                 alt_text=asset.alt_text,
+                crops=crops_to_json(asset.crops),
                 created_at=asset.created_at,
             )
         )
@@ -85,7 +135,7 @@ class SqlAlchemyMediaAssetRepository:
     def in_use(self, asset_id: UUID) -> bool:
         return bool(self.usage(asset_id))
 
-    def usage(self, asset_id: UUID) -> list[str]:
+    def usage(self, asset_id: UUID) -> builtins.list[str]:
         """Every place that references the asset. Deleting is refused while any exist."""
         places: list[str] = []
         products = self._session.scalars(
@@ -137,4 +187,5 @@ class SqlAlchemyMediaAssetRepository:
         row.sha256 = asset.sha256
         row.original_filename = asset.original_filename
         row.alt_text = asset.alt_text
+        row.crops = crops_to_json(asset.crops)  # reassigned, so the JSON change is tracked
         self._session.flush()

@@ -73,4 +73,5 @@ class InventoryLedger(Protocol):
         reason: InventoryReason,
         actor_user_id: UUID | None,
         note: str | None = None,
+        order_id: UUID | None = None,
     ) -> None: ...

@@ -7,6 +7,7 @@ import type { Money, ProductSort } from "@/lib/api/types";
 
 export const SORT_OPTIONS: { value: ProductSort; label: string }[] = [
   { value: "featured", label: "Featured" },
+  { value: "bestselling", label: "Bestsellers" },
   { value: "newest", label: "New arrivals" },
   { value: "price_asc", label: "Price: low to high" },
   { value: "price_desc", label: "Price: high to low" },

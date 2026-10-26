@@ -1,5 +1,6 @@
 """Homepage page builder (draft workspace), publishing, and the public read model."""
 
+import builtins
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -15,7 +16,7 @@ from app.application.dto.catalog import (
     ProductSort,
     ProductSummary,
 )
-from app.application.ports import CatalogQueries
+from app.application.ports import CatalogQueries, RecommendationQueries
 from app.domain.entities.content import MAX_SECTION_PRODUCTS, HomepageSection, validate_ordering
 from app.domain.enums import HomepageSectionType, PublishStatus, SelectionMode
 from app.domain.errors import DomainValidationError, NotFoundError
@@ -84,7 +85,9 @@ class HomepageBuilder:
     # --- reads ---------------------------------------------------------------------------
 
     def list(self) -> list[SectionView]:
-        return [SectionView(s, self._sections.product_ids(s.id)) for s in self._sections.list_sections()]
+        return [
+            SectionView(s, self._sections.product_ids(s.id)) for s in self._sections.list_sections()
+        ]
 
     def get(self, section_id: UUID) -> SectionView:
         section = self._require(section_id)
@@ -112,7 +115,7 @@ class HomepageBuilder:
             raise DomainValidationError("A section's type cannot be changed; add a new section.")
         section = self._build(section_id, data, position=current.position)
         self._sections.save(section)
-        if section.selection_mode is not SelectionMode.MANUAL:
+        if section.selection_mode not in CURATED_MODES:
             self._sections.set_products(section_id, [])
         self._log(actor_id, "homepage_section.updated", section_id)
         self._uow.commit()
@@ -121,7 +124,9 @@ class HomepageBuilder:
         section = self._require(section_id)
         section.is_visible = visible
         self._sections.save(section)
-        self._log(actor_id, "homepage_section.shown" if visible else "homepage_section.hidden", section_id)
+        self._log(
+            actor_id, "homepage_section.shown" if visible else "homepage_section.hidden", section_id
+        )
         self._uow.commit()
 
     def delete(self, section_id: UUID, *, actor_id: UUID | None) -> None:
@@ -130,7 +135,7 @@ class HomepageBuilder:
         self._log(actor_id, "homepage_section.deleted", section_id)
         self._uow.commit()
 
-    def reorder(self, section_ids: list[UUID], *, actor_id: UUID | None) -> None:
+    def reorder(self, section_ids: builtins.list[UUID], *, actor_id: UUID | None) -> None:
         existing = {s.id for s in self._sections.list_sections()}
         if len(set(section_ids)) != len(section_ids) or set(section_ids) != existing:
             raise DomainValidationError("The new order must list every section exactly once.")
@@ -138,9 +143,11 @@ class HomepageBuilder:
         self._log(actor_id, "homepage.sections_reordered", None)
         self._uow.commit()
 
-    def set_products(self, section_id: UUID, product_ids: list[UUID], *, actor_id: UUID | None) -> None:
+    def set_products(
+        self, section_id: UUID, product_ids: builtins.list[UUID], *, actor_id: UUID | None
+    ) -> None:
         section = self._require(section_id)
-        if section.selection_mode is not SelectionMode.MANUAL:
+        if section.selection_mode not in CURATED_MODES:
             raise DomainValidationError("Only manual-selection sections have a hand-picked order.")
         ordering = validate_ordering(product_ids, limit=MAX_SECTION_PRODUCTS)
         if set(ordering) - self._products.existing_ids(ordering):
@@ -212,9 +219,14 @@ class HomepageBuilder:
         media = [m for m in (section.desktop_media_id, section.mobile_media_id) if m]
         if set(media) - self._media.existing_ids(media):
             raise DomainValidationError("Image does not exist in the media library.")
-        if section.source_category_id and not self._categories.existing_ids([section.source_category_id]):
+        if section.source_category_id and not self._categories.existing_ids(
+            [section.source_category_id]
+        ):
             raise DomainValidationError("Source category does not exist.")
-        if section.source_collection_id and self._collections.get(section.source_collection_id) is None:
+        if (
+            section.source_collection_id
+            and self._collections.get(section.source_collection_id) is None
+        ):
             raise DomainValidationError("Source collection does not exist.")
         settings = section.settings
         if settings.get("category_ids"):
@@ -228,7 +240,11 @@ class HomepageBuilder:
         return section
 
     def _log(
-        self, actor_id: UUID | None, action: str, section_id: UUID | None, changes: dict[str, Any] | None = None
+        self,
+        actor_id: UUID | None,
+        action: str,
+        section_id: UUID | None,
+        changes: dict[str, Any] | None = None,
     ) -> None:
         self._audit.record(
             actor_user_id=actor_id,
@@ -269,16 +285,26 @@ class PublishedHomepage:
     sections: list[PublishedSection]
 
 
+# Modes that keep the section's own hand-picked product list (bestsellers use it as fallback).
+CURATED_MODES = frozenset({SelectionMode.MANUAL, SelectionMode.BESTSELLERS})
+
+
 class PublicHomepage:
     """Resolves the latest publication against live data (active products only, current
     image URLs, published collections)."""
 
     def __init__(
-        self, *, sections: HomepageBuilderRepository, categories: CategoryRepository, queries: CatalogQueries
+        self,
+        *,
+        sections: HomepageBuilderRepository,
+        categories: CategoryRepository,
+        queries: CatalogQueries,
+        recommendations: RecommendationQueries | None = None,
     ) -> None:
         self._sections = sections
         self._categories = categories
         self._queries = queries
+        self._recommendations = recommendations
 
     def get(self) -> PublishedHomepage:
         latest = self._sections.latest_publication()
@@ -313,7 +339,9 @@ class PublicHomepage:
             elif mode == SelectionMode.CATEGORY.value and raw.get("source_category_id"):
                 category = self._categories.get(UUID(raw["source_category_id"]))
                 if category and category.is_active:
-                    products = self._list(ProductFilters(page_size=limit, category_slug=category.slug))
+                    products = self._list(
+                        ProductFilters(page_size=limit, category_slug=category.slug)
+                    )
                     view_all = f"/category/{category.slug}"
             elif mode == SelectionMode.COLLECTION.value and raw.get("source_collection_id"):
                 found = self._queries.list_collections(
@@ -321,11 +349,22 @@ class PublicHomepage:
                 )
                 if found:
                     collection = found[0]
-                    products = self._list(ProductFilters(page_size=limit, collection_slug=collection.slug))
+                    products = self._list(
+                        ProductFilters(page_size=limit, collection_slug=collection.slug)
+                    )
                     view_all = f"/collections/{collection.slug}"
             elif mode == SelectionMode.NEWEST.value:
                 products = self._list(ProductFilters(page_size=limit, sort=ProductSort.NEWEST))
                 view_all = "/shop?sort=newest"
+            elif mode == SelectionMode.BESTSELLERS.value and self._recommendations is not None:
+                # Real order data first; the admin's own picks fill any gap (never invented).
+                ranked = self._recommendations.bestseller_ids(limit=limit)
+                fallback = [UUID(p) for p in raw.get("product_ids", []) if UUID(p) not in ranked]
+                products = list(self._queries.ordered_products([*ranked, *fallback]))[:limit]
+                view_all = "/shop?sort=bestselling"
+            elif mode == SelectionMode.FEATURED.value and self._recommendations is not None:
+                ids = self._recommendations.featured_ids(limit=limit)
+                products = list(self._queries.ordered_products(ids))[:limit]
 
             if kind == HomepageSectionType.CATEGORY_GRID.value:
                 if all_categories is None:
@@ -349,8 +388,12 @@ class PublicHomepage:
                     title=raw.get("title"),
                     subtitle=raw.get("subtitle"),
                     settings=settings,
-                    desktop_image=images.get(UUID(raw["desktop_media_id"])) if raw.get("desktop_media_id") else None,
-                    mobile_image=images.get(UUID(raw["mobile_media_id"])) if raw.get("mobile_media_id") else None,
+                    desktop_image=images.get(UUID(raw["desktop_media_id"]))
+                    if raw.get("desktop_media_id")
+                    else None,
+                    mobile_image=images.get(UUID(raw["mobile_media_id"]))
+                    if raw.get("mobile_media_id")
+                    else None,
                     products=products,
                     categories=categories,
                     collections=collections,

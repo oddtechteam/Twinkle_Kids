@@ -46,6 +46,8 @@ class SelectionMode(StrEnum):
     CATEGORY = "category"
     COLLECTION = "collection"
     NEWEST = "newest"
+    BESTSELLERS = "bestsellers"  # from recorded order data, with the manual list as fallback
+    FEATURED = "featured"  # products the admin flagged as featured
 
 
 class NavigationMenu(StrEnum):
@@ -145,3 +147,32 @@ class InquiryStatus(StrEnum):
 def sql_in(enum: type[StrEnum]) -> str:
     """Render ``'a','b',...`` for CHECK constraints (values are fixed identifiers)."""
     return ",".join(f"'{member.value}'" for member in enum)
+
+
+class OrderRequestKind(StrEnum):
+    CANCELLATION = "cancellation"
+    RETURN = "return"
+    EXCHANGE = "exchange"
+
+
+class OrderRequestStatus(StrEnum):
+    """After-sale request workflow. `received` = returned goods physically checked in."""
+
+    REQUESTED = "requested"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    RECEIVED = "received"
+    COMPLETED = "completed"
+
+
+class NotificationChannel(StrEnum):
+    EMAIL = "email"
+    WHATSAPP = "whatsapp"
+
+
+class NotificationStatus(StrEnum):
+    """`sent` only when the delivery provider accepted the message."""
+
+    SENT = "sent"
+    FAILED = "failed"
+    SKIPPED = "skipped"  # channel not configured

@@ -48,6 +48,9 @@ class FakeRepo:
     def in_use(self, asset_id: UUID) -> bool:
         return False
 
+    def usage(self, asset_id: UUID) -> list[str]:
+        return []
+
     def list(
         self, *, purpose: MediaPurpose | None, limit: int, offset: int
     ) -> Sequence[MediaAsset]:

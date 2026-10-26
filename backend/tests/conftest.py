@@ -168,3 +168,19 @@ def product_payload(
         ],
         **extra,
     }
+
+
+# --- commerce fixtures (shared by checkout / operations tests) ----------------------------------
+
+
+@pytest.fixture
+def owner(app: FastAPI, container: Container) -> TestClient:
+    client = TestClient(app)
+    user = create_user(container, Role.OWNER)
+    login(client, user.email)
+    return client
+
+
+@pytest.fixture
+def shopper(app: FastAPI) -> TestClient:
+    return TestClient(app)

@@ -99,6 +99,16 @@ class Settings(BaseSettings):
     # Public storefront origin, used in links the API writes (e.g. WhatsApp order messages).
     storefront_url: str = "http://localhost:3000"
 
+    # Transactional email (password reset). Without SMTP_HOST: logged in development/test,
+    # not sent in production.
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "Twinkle Kids <no-reply@localhost>"
+    smtp_starttls: bool = True
+    password_reset_ttl_minutes: int = Field(default=30, ge=5, le=24 * 60)
+
     @field_validator("cors_origins", "protected_neon_branches", mode="before")
     @classmethod
     def _split_csv(cls, value: object) -> object:
@@ -113,6 +123,8 @@ class Settings(BaseSettings):
         "aws_region",
         "media_public_base_url",
         "cookie_domain",
+        "smtp_host",
+        "smtp_username",
         mode="before",
     )
     @classmethod

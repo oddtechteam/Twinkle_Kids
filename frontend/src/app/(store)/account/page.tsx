@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { AccountView } from "@/components/account/AccountView";
 import { Loader } from "@/components/ui/Loader";
+import { getSiteContent } from "@/lib/content";
 
 export const metadata: Metadata = { title: "My account", robots: { index: false, follow: false } };
 
@@ -10,7 +11,12 @@ export const metadata: Metadata = { title: "My account", robots: { index: false,
 export default function AccountPage() {
   return (
     <Suspense fallback={<Loader label="Opening your account…" />}>
-      <AccountView />
+      <Account />
     </Suspense>
   );
+}
+
+async function Account() {
+  const content = await getSiteContent();
+  return <AccountView orderPolicy={content.commerce.orderPolicies} />;
 }

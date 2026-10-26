@@ -101,7 +101,7 @@ function ItemDialog({
       is_active: f.is_active,
       open_in_new_tab: f.link_type === "url" && f.open_in_new_tab,
     };
-    const res = await run(() => (item ? adminApi.updateNavigation(item.id, body) : adminApi.createNavigation(body)), {
+    const res = await run(() => (item ? adminApi.updateNavigation(item.id, body) : adminApi.createNavigation(body).then(() => undefined)), {
       success: item ? "Menu item saved" : "Menu item added",
     });
     if (res.ok) onSaved();

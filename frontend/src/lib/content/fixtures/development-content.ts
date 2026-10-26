@@ -190,7 +190,13 @@ export const developmentContent: SiteContent = {
       },
     ],
   },
-  commerce: { whatsappOrdering: false, guestCheckout: true, currency: "INR" },
+  commerce: {
+    whatsappOrdering: false,
+    guestCheckout: true,
+    currency: "INR",
+    shipping: { freeThreshold: null, message: "", estimate: "" },
+    orderPolicies: { cancellation: false, returns: false, exchanges: false, returnWindowDays: 7, reasons: [], note: "" },
+  },
   footer: {
     blurb:
       "A children's fashion boutique for adorable everyday outfits, festive looks and special occasion styles.",

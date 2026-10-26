@@ -10,13 +10,12 @@ from app.api.deps import (
     CatalogManagerDep,
     CatalogReaderDep,
     CategoryCommandsDep,
-    ContentManagerDep,
     CollectionServiceDep,
+    ContentManagerDep,
     ProductCommandsDep,
     StaffUserDep,
 )
 from app.api.schemas.admin import (
-    PublishStatusIn,
     ActiveIn,
     CategoryIn,
     CollectionIn,
@@ -24,9 +23,9 @@ from app.api.schemas.admin import (
     OrderingIn,
     ProductIn,
     ProductStatusIn,
+    PublishStatusIn,
 )
 from app.api.schemas.auth import AdminMeOut
-from app.api.schemas.content import AdminCollectionOut
 from app.api.schemas.catalog import (
     AdminCategoryDetailOut,
     AdminCategoryOut,
@@ -34,6 +33,7 @@ from app.api.schemas.catalog import (
     AdminProductListOut,
     AdminProductSummaryOut,
 )
+from app.api.schemas.content import AdminCollectionOut
 from app.application.dto.catalog import MAX_PAGE_SIZE, ProductFilters, ProductSort
 from app.domain.enums import ProductStatus
 
@@ -98,7 +98,10 @@ def admin_update_product(
     status_code=status.HTTP_201_CREATED,
 )
 def admin_duplicate_product(
-    product_id: UUID, user: CatalogManagerDep, commands: ProductCommandsDep, reader: CatalogReaderDep
+    product_id: UUID,
+    user: CatalogManagerDep,
+    commands: ProductCommandsDep,
+    reader: CatalogReaderDep,
 ) -> AdminProductDetailOut:
     """Copy as a draft with unique slug/SKUs and zero stock."""
     copy_id = commands.duplicate(product_id, actor_id=user.id)
@@ -217,6 +220,9 @@ def admin_update_collection(
 
 @router.patch("/collections/{collection_id}/status", status_code=status.HTTP_204_NO_CONTENT)
 def admin_set_collection_status(
-    collection_id: UUID, body: PublishStatusIn, user: ContentManagerDep, service: CollectionServiceDep
+    collection_id: UUID,
+    body: PublishStatusIn,
+    user: ContentManagerDep,
+    service: CollectionServiceDep,
 ) -> None:
     service.set_status(collection_id, body.status, actor_id=user.id)

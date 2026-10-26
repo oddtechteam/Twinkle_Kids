@@ -24,6 +24,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.domain.enums import (
     CartStatus,
     InventoryReason,
+    NotificationChannel,
+    NotificationStatus,
+    OrderRequestKind,
+    OrderRequestStatus,
     OrderSource,
     OrderStatus,
     PaymentMethod,
@@ -139,6 +143,8 @@ class OrderModel(Base):
     coupon_code: Mapped[str | None] = mapped_column(String(40))  # snapshot
     customer_note: Mapped[str | None] = mapped_column(Text)
     internal_note: Mapped[str | None] = mapped_column(Text)
+    # SHA-256 of (owner, client submission key): a resubmitted checkout returns the same order.
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), unique=True)
     placed_at: Mapped[datetime] = created_at_column()
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
@@ -285,4 +291,70 @@ class InventoryMovementModel(Base):
         CheckConstraint("quantity_delta <> 0", name="delta_non_zero"),
         CheckConstraint("stock_after >= 0", name="stock_after_non_negative"),
         Index("ix_inventory_movements_variant_created", "variant_id", "created_at"),
+    )
+
+
+class OrderRequestModel(Base):
+    """Cancellation, return or exchange request against an order (customer- or staff-raised).
+
+    No refunds happen automatically (there is no payment gateway): `refund_amount` records what
+    staff actually refunded, and stock is only added back when returned goods are verified.
+    """
+
+    __tablename__ = "order_requests"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    reference: Mapped[str] = mapped_column(String(24), unique=True)
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    kind: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(
+        String(16),
+        default=OrderRequestStatus.REQUESTED.value,
+        server_default=OrderRequestStatus.REQUESTED.value,
+    )
+    reason: Mapped[str] = mapped_column(String(40))
+    customer_message: Mapped[str | None] = mapped_column(Text)
+    items: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONType, default=list, server_default=text("'[]'")
+    )  # [{"order_item_id": "...", "quantity": 1}]
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+    refund_amount: Mapped[Decimal | None] = mapped_column(Money)
+    restocked: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    created_by_staff: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+    __table_args__ = (
+        CheckConstraint(f"kind IN ({sql_in(OrderRequestKind)})", name="kind_valid"),
+        CheckConstraint(f"status IN ({sql_in(OrderRequestStatus)})", name="status_valid"),
+        CheckConstraint("refund_amount IS NULL OR refund_amount >= 0", name="refund_non_negative"),
+        Index("ix_order_requests_status_created", "status", "created_at"),
+    )
+
+
+class NotificationModel(Base):
+    """Delivery attempts. Message bodies are not stored (they may contain reset links)."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    channel: Mapped[str] = mapped_column(String(16))
+    template: Mapped[str] = mapped_column(String(40))
+    recipient: Mapped[str] = mapped_column(String(254))
+    subject: Mapped[str | None] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16))
+    provider: Mapped[str | None] = mapped_column(String(40))
+    provider_message_id: Mapped[str | None] = mapped_column(String(200))
+    error: Mapped[str | None] = mapped_column(String(300))
+    entity_type: Mapped[str | None] = mapped_column(String(40))
+    entity_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = created_at_column()
+
+    __table_args__ = (
+        CheckConstraint(f"channel IN ({sql_in(NotificationChannel)})", name="channel_valid"),
+        CheckConstraint(f"status IN ({sql_in(NotificationStatus)})", name="status_valid"),
+        Index("ix_notifications_created_at", "created_at"),
     )

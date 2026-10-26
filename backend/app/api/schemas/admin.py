@@ -83,6 +83,8 @@ class ProductIn(_In):
     primary_category_id: UUID | None = None
     collection_ids: list[UUID] | None = Field(default=None, max_length=30)
     badges: list[Badge] = Field(default_factory=list, max_length=3)
+    is_featured: bool = False
+    related_product_ids: list[UUID] = Field(default_factory=list, max_length=12)
     variants: list[VariantIn] = Field(min_length=1, max_length=200)
     media: list[ProductMediaIn] = Field(default_factory=list, max_length=30)
 
@@ -108,6 +110,8 @@ class ProductIn(_In):
             primary_category_id=self.primary_category_id,
             collection_ids=self.collection_ids,
             badges=list(self.badges),
+            is_featured=self.is_featured,
+            related_product_ids=list(self.related_product_ids),
             variants=[
                 VariantInput(
                     id=v.id,
@@ -230,6 +234,8 @@ class SettingsPatch(_In):
     whatsapp_number: Annotated[str, StringConstraints(max_length=20)] | None = None
     whatsapp_message_template: Annotated[str, StringConstraints(max_length=500)] | None = None
     payment_options: list[dict[str, Any]] | None = None
+    shipping_settings: dict[str, Any] | None = None
+    order_policies: dict[str, Any] | None = None
     default_product_sort: str | None = None
     default_low_stock_threshold: int | None = Field(default=None, ge=0, le=10_000)
     seo_defaults: dict[str, Any] | None = None

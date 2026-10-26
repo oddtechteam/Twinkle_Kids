@@ -5,12 +5,20 @@ Every model forbids unknown keys, caps lengths, only accepts site-relative or ht
 never accepts HTML or script: the storefront renders these values as plain text.
 """
 
+from decimal import Decimal
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+)
 
-from app.domain.enums import HomepageSectionType, PaymentMethod
+from app.domain.enums import HomepageSectionType, OrderStatus, PaymentMethod
 from app.domain.errors import DomainValidationError
 
 HexColour = Annotated[str, StringConstraints(pattern=r"^#[0-9a-fA-F]{6}$")]
@@ -48,9 +56,15 @@ Text320 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=0, 
 Text400 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=0, max_length=400)]
 Text400Req = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=400)]
 Text600Req = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
-Text1000Req = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
-Text4000Req = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)]
-Text5000Req = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)]
+Text1000Req = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)
+]
+Text4000Req = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=4000)
+]
+Text5000Req = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5000)
+]
 
 
 class Strict(BaseModel):
@@ -353,3 +367,77 @@ class SizeChartData(Strict):
 
 def validate_size_chart(raw: Any) -> dict[str, Any]:
     return _validate(SizeChartData, raw, "size chart")
+
+
+# --- Shipping & order policies ------------------------------------------------------------------
+
+PinPrefix = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[1-9][0-9]{0,5}$")]
+PinCode = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[1-9][0-9]{5}$")]
+
+
+class ShippingSettings(Strict):
+    """Shop-configured delivery rules. There is no live courier integration: any delivery
+    time shown to customers is the shop's own estimate and is labelled as such."""
+
+    free_shipping_threshold: Decimal | None = Field(
+        default=None, ge=0, max_digits=12, decimal_places=2
+    )
+    pin_mode: Literal["all", "allow_list"] = "all"
+    allowed_pin_prefixes: list[PinPrefix] = Field(default_factory=list, max_length=500)
+    blocked_pin_codes: list[PinCode] = Field(default_factory=list, max_length=500)
+    shipping_message: Text300 = ""
+    delivery_estimate: Text140 = ""
+    unserviceable_message: Text300 = ""
+
+
+DEFAULT_REASONS = ["Wrong size", "Damaged or defective", "Received a different item", "Other"]
+
+
+class OrderPolicies(Strict):
+    """Which after-sale requests customers may raise from their order history."""
+
+    cancellation_enabled: bool = False
+    cancellable_statuses: list[OrderStatus] = Field(
+        default_factory=lambda: [OrderStatus.PENDING_CONFIRMATION, OrderStatus.CONFIRMED],
+        max_length=8,
+    )
+    returns_enabled: bool = False
+    exchanges_enabled: bool = False
+    return_window_days: int = Field(default=7, ge=0, le=90)
+    reasons: list[Text40Req] = Field(default_factory=lambda: list(DEFAULT_REASONS), max_length=12)
+    policy_note: Text300 = ""
+
+
+def validate_shipping_settings(raw: Any) -> dict[str, Any]:
+    data = _validate(ShippingSettings, raw, "shipping settings")
+    if data.get("pin_mode") == "allow_list" and not data.get("allowed_pin_prefixes"):
+        raise DomainValidationError("Add at least one PIN-code prefix, or deliver everywhere.")
+    return data
+
+
+def validate_order_policies(raw: Any) -> dict[str, Any]:
+    return _validate(OrderPolicies, raw, "order policies")
+
+
+def shipping_settings(raw: dict[str, Any] | None) -> ShippingSettings:
+    """Stored settings as a typed object (defaults for anything missing)."""
+    try:
+        return ShippingSettings.model_validate(raw or {})
+    except ValidationError:
+        return ShippingSettings()
+
+
+def order_policies(raw: dict[str, Any] | None) -> OrderPolicies:
+    try:
+        return OrderPolicies.model_validate(raw or {})
+    except ValidationError:
+        return OrderPolicies()
+
+
+def pin_serviceable(settings: ShippingSettings, postal_code: str) -> bool:
+    pin = postal_code.replace(" ", "")
+    if pin in settings.blocked_pin_codes:
+        return False
+    if settings.pin_mode == "allow_list":
+        return any(pin.startswith(prefix) for prefix in settings.allowed_pin_prefixes)
+    return True

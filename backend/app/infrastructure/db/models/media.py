@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -10,11 +11,12 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.db.base import Base
-from app.infrastructure.db.types import UTCDateTime
+from app.infrastructure.db.types import JSONType, UTCDateTime
 
 
 class MediaAssetModel(Base):
@@ -38,13 +40,18 @@ class MediaAssetModel(Base):
     sha256: Mapped[str] = mapped_column(String(64))
     original_filename: Mapped[str | None] = mapped_column(String(255))
     alt_text: Mapped[str | None] = mapped_column(String(300))
+    # {frame: {x, y, width, height, object_key, output_width, output_height, updated_at}}.
+    # Rect values are fractions of the original; object_key is the cropped WebP rendition.
+    crops: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, server_default=func.now())
 
     __table_args__ = (
         UniqueConstraint("bucket", "object_key", name="uq_media_assets_bucket_object_key"),
         CheckConstraint(
             "purpose IN ('product_image','category_image','collection_image',"
-            "'homepage_banner','content_image')",
+            "'homepage_banner','content_image','review_image')",
             name="purpose_valid",
         ),
         CheckConstraint("visibility IN ('public','private')", name="visibility_valid"),

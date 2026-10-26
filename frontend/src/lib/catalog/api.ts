@@ -18,6 +18,7 @@ import type {
   ProductDetail,
   ProductList,
   ProductSort,
+  Recommendations,
   ReviewSummary,
   ShippingRule,
   Sitemap,
@@ -103,6 +104,10 @@ export function getFacets(scope: { category?: string; collection?: string; q?: s
 /** Approved reviews for a product (empty when none have been approved). */
 export function getReviews(slug: string): Promise<ApiResult<ReviewSummary>> {
   return attempt<ReviewSummary>(`/products/${encodeURIComponent(slug)}/reviews`);
+}
+
+export function getRecommendations(slug: string): Promise<ApiResult<Recommendations>> {
+  return attempt<Recommendations>(`/products/${encodeURIComponent(slug)}/recommendations`);
 }
 
 /** Active delivery fee bands from store settings. */

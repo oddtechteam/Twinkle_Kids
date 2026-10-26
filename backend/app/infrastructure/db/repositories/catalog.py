@@ -72,6 +72,8 @@ def _product_to_entity(row: ProductModel) -> Product:
             for m in row.media_links
         ],
         badges=list(row.badges or []),
+        is_featured=row.is_featured,
+        related_product_ids=[UUID(str(v)) for v in (row.related_product_ids or [])],
         published_at=row.published_at,
         created_at=row.created_at,
         updated_at=row.updated_at,
@@ -146,6 +148,8 @@ class SqlAlchemyProductRepository:
         row.seo_description = product.seo_description
         row.seo_metadata = dict(product.seo_metadata)
         row.badges = list(product.badges)
+        row.is_featured = product.is_featured
+        row.related_product_ids = [str(i) for i in product.related_product_ids]
         row.published_at = product.published_at
 
         self._sync_variants(row, product.variants)
@@ -158,14 +162,19 @@ class SqlAlchemyProductRepository:
         existing = {v.id: v for v in row.variants}
         kept: list[ProductVariantModel] = []
         for position, variant in enumerate(variants):
-            model = existing.get(variant.id) or ProductVariantModel(id=variant.id)
+            current = existing.get(variant.id)
+            model = current or ProductVariantModel(id=variant.id)
             model.sku = variant.sku
             model.size = variant.size
             model.colour = variant.colour
             model.colour_hex = variant.colour_hex
             model.selling_price = variant.selling_price_override
             model.original_price = variant.original_price_override
-            model.stock_quantity = variant.stock_quantity
+            if current is None:
+                # Opening stock only. Existing stock changes solely through atomic inventory
+                # adjustments and orders, so saving a product can never overwrite a sale that
+                # happened while the editor was open.
+                model.stock_quantity = variant.stock_quantity
             model.position = position
             model.is_active = variant.is_active
             kept.append(model)

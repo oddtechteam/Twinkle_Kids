@@ -1,6 +1,7 @@
 """Store settings, navigation menus, website pages, shipping rules and size charts, plus the
 public site configuration read model."""
 
+import builtins
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, fields, replace
 from datetime import UTC, datetime
@@ -10,9 +11,11 @@ from uuid import UUID, uuid4
 
 from app.application.content_settings import (
     validate_announcement,
+    validate_order_policies,
     validate_page_content,
     validate_payment_options,
     validate_seo_defaults,
+    validate_shipping_settings,
     validate_size_chart,
     validate_social_links,
     validate_theme,
@@ -91,6 +94,10 @@ class SettingsService:
             values["theme"] = validate_theme(values["theme"])
         if "announcement" in values:
             values["announcement"] = validate_announcement(values["announcement"])
+        if "shipping_settings" in values:
+            values["shipping_settings"] = validate_shipping_settings(values["shipping_settings"])
+        if "order_policies" in values:
+            values["order_policies"] = validate_order_policies(values["order_policies"])
         if "payment_options" in values:
             values["payment_options"] = validate_payment_options(values["payment_options"])
         if "social_links" in values:
@@ -104,7 +111,9 @@ class SettingsService:
                 values[key] = _phone(values[key], key.replace("_", " ").capitalize())
         for key in ("store_name", "tagline", "contact_email", "business_address", "business_hours"):
             if key in values and isinstance(values[key], str):
-                values[key] = values[key].strip() if key == "store_name" else clean_optional(values[key])
+                values[key] = (
+                    values[key].strip() if key == "store_name" else clean_optional(values[key])
+                )
         if "whatsapp_message_template" in values:
             template = clean_optional(values["whatsapp_message_template"])
             if template and len(template) > 500:
@@ -190,13 +199,15 @@ class NavigationService:
         self._log(actor_id, "navigation.deleted", item_id)
         self._uow.commit()
 
-    def reorder(self, item_ids: list[UUID], *, actor_id: UUID | None) -> None:
+    def reorder(self, item_ids: builtins.list[UUID], *, actor_id: UUID | None) -> None:
         items = {i.id: i for i in self._navigation.list()}
         if len(set(item_ids)) != len(item_ids) or any(i not in items for i in item_ids):
             raise DomainValidationError("Unknown or duplicate menu items in the new order.")
         groups = {(items[i].menu, items[i].parent_id) for i in item_ids}
         if len(groups) > 1:
-            raise DomainValidationError("Only items in the same menu level can be reordered together.")
+            raise DomainValidationError(
+                "Only items in the same menu level can be reordered together."
+            )
         self._navigation.reorder(item_ids)
         self._log(actor_id, "navigation.reordered", None)
         self._uow.commit()
@@ -220,7 +231,9 @@ class NavigationService:
             link_type=data.link_type,
             parent_id=data.parent_id,
             category_id=data.category_id if data.link_type is NavigationLinkType.CATEGORY else None,
-            collection_id=data.collection_id if data.link_type is NavigationLinkType.COLLECTION else None,
+            collection_id=data.collection_id
+            if data.link_type is NavigationLinkType.COLLECTION
+            else None,
             page_id=data.page_id if data.link_type is NavigationLinkType.PAGE else None,
             url=url if data.link_type is NavigationLinkType.URL else None,
             position=position,
@@ -336,7 +349,10 @@ class PageService:
 
     def _log(self, actor_id: UUID | None, action: str, page_id: UUID) -> None:
         self._audit.record(
-            actor_user_id=actor_id, action=action, entity_type="website_page", entity_id=str(page_id)
+            actor_user_id=actor_id,
+            action=action,
+            entity_type="website_page",
+            entity_id=str(page_id),
         )
 
 
@@ -354,7 +370,9 @@ class ShippingRuleInput:
 
 
 class ShippingService:
-    def __init__(self, *, rules: ShippingRuleRepository, audit: AuditLogRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self, *, rules: ShippingRuleRepository, audit: AuditLogRepository, uow: UnitOfWork
+    ) -> None:
         self._rules = rules
         self._audit = audit
         self._uow = uow
@@ -388,7 +406,10 @@ class ShippingService:
 
     def _log(self, actor_id: UUID | None, action: str, rule_id: UUID) -> None:
         self._audit.record(
-            actor_user_id=actor_id, action=action, entity_type="shipping_rule", entity_id=str(rule_id)
+            actor_user_id=actor_id,
+            action=action,
+            entity_type="shipping_rule",
+            entity_id=str(rule_id),
         )
 
 
@@ -415,7 +436,9 @@ class SizeChartInput:
 
 
 class SizeChartService:
-    def __init__(self, *, charts: SizeChartRepository, audit: AuditLogRepository, uow: UnitOfWork) -> None:
+    def __init__(
+        self, *, charts: SizeChartRepository, audit: AuditLogRepository, uow: UnitOfWork
+    ) -> None:
         self._charts = charts
         self._audit = audit
         self._uow = uow
@@ -553,7 +576,9 @@ class PublicSiteReader:
                     return None
                 href = f"/category/{category.slug}"
             case NavigationLinkType.COLLECTION:
-                collection = self._collections.get(item.collection_id) if item.collection_id else None
+                collection = (
+                    self._collections.get(item.collection_id) if item.collection_id else None
+                )
                 if collection is None or collection.status is not PublishStatus.PUBLISHED:
                     return None
                 href = f"/collections/{collection.slug}"

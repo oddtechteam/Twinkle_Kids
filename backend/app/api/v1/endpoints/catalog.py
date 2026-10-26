@@ -13,6 +13,7 @@ from app.api.schemas.catalog import (
     FacetsOut,
     ProductDetailOut,
     ProductListOut,
+    RecommendationsOut,
     ReviewSummaryOut,
     SitemapOut,
 )
@@ -74,6 +75,12 @@ def product_facets(
 def product_reviews(slug: str, reader: CatalogReaderDep) -> ReviewSummaryOut:
     """Approved customer reviews only."""
     return ReviewSummaryOut.model_validate(reader.reviews(slug))
+
+
+@router.get("/products/{slug}/recommendations", response_model=RecommendationsOut)
+def product_recommendations(slug: str, reader: CatalogReaderDep) -> RecommendationsOut:
+    """Admin-curated related products, then same-category bestsellers from real order data."""
+    return RecommendationsOut.model_validate(reader.recommendations(slug))
 
 
 @router.get("/sitemap", response_model=SitemapOut)

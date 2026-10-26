@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.domain.enums import DiscountType, InquiryStatus, ReviewStatus, sql_in
 from app.infrastructure.db.base import Base
 from app.infrastructure.db.types import (
+    JSONType,
     Money,
     UTCDateTime,
     created_at_column,
@@ -42,6 +44,10 @@ class CouponModel(Base):
     usage_limit: Mapped[int | None] = mapped_column(Integer)
     per_user_limit: Mapped[int | None] = mapped_column(Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    # {"product_ids": [...], "category_ids": [...], "collection_ids": [...]}; empty = whole order
+    applies_to: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
@@ -101,6 +107,16 @@ class ReviewModel(Base):
     title: Mapped[str | None] = mapped_column(String(120))
     body: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    # True only when the reviewer has a placed (non-cancelled) order containing this product.
+    is_verified_purchase: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    author_name: Mapped[str | None] = mapped_column(String(60))
+    moderation_note: Mapped[str | None] = mapped_column(String(500))
+    moderated_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    moderated_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
@@ -116,6 +132,25 @@ class ReviewModel(Base):
             sqlite_where=text("user_id IS NOT NULL"),
         ),
         Index("ix_reviews_product_status", "product_id", "status"),
+    )
+
+
+class ReviewMediaModel(Base):
+    """Customer review photos (private bucket; shown only once the review is approved)."""
+
+    __tablename__ = "review_media"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    review_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("reviews.id", ondelete="CASCADE"), index=True
+    )
+    media_asset_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="RESTRICT")
+    )
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    __table_args__ = (
+        UniqueConstraint("review_id", "media_asset_id", name="uq_review_media_review_asset"),
     )
 
 

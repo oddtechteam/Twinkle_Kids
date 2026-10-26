@@ -244,6 +244,14 @@ class StoreSettingsModel(Base):
         String(16), default="featured", server_default="featured"
     )
     whatsapp_message_template: Mapped[str | None] = mapped_column(Text)
+    # Free-shipping threshold, PIN-code eligibility, delivery messaging (see content_settings).
+    shipping_settings: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
+    # Cancellation / return / exchange policy switches and reasons.
+    order_policies: Mapped[dict[str, Any]] = mapped_column(
+        JSONType, default=dict, server_default=text("'{}'")
+    )
     payment_options: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONType, default=list, server_default=text("'[]'")
     )

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { adminApi } from "@/lib/admin/api";
 import { useMutation, useResource } from "@/lib/admin/hooks";
 import type { AdminProductDetail, AdminProductSummary, Section, SectionPayload, SectionType, SelectionMode } from "@/lib/admin/types";
+import type { ImageFrame } from "@/lib/media/frames";
 import { Card, CheckList, SelectInput, TextArea, TextInput, Toggle, adminStyles as styles } from "./Kit";
 import { MediaField } from "./Pickers";
 import { ProductOrdering } from "./ProductOrdering";
@@ -377,7 +378,7 @@ export function SectionEditor({ type, section, onSaved }: { type: SectionType; s
   const collections = useResource(() => (meta.products ? adminApi.collections() : Promise.resolve([])), `sel-cols-${type}`);
   const manualProducts = useResource(
     () =>
-      section && section.selection_mode === "manual"
+      section && (section.selection_mode === "manual" || section.selection_mode === "bestsellers")
         ? Promise.all(section.product_ids.map((id) => adminApi.product(id).then(toSummary)))
         : Promise.resolve([] as AdminProductSummary[]),
     `${section?.id ?? "new"}-${section?.selection_mode}-${section?.product_ids.join(",")}`,
@@ -391,6 +392,8 @@ export function SectionEditor({ type, section, onSaved }: { type: SectionType; s
       ? [{ value: "collection", label: "From a collection" }]
       : [
           { value: "newest", label: "Newest products" },
+          { value: "bestsellers", label: "Bestsellers (from real orders, your picks as fallback)" },
+          { value: "featured", label: "Featured products (flagged in the product editor)" },
           { value: "category", label: "From a category" },
           { value: "collection", label: "From a collection (uses the collection's order)" },
           { value: "manual", label: "Hand-picked products (your own order)" },
@@ -418,6 +421,9 @@ export function SectionEditor({ type, section, onSaved }: { type: SectionType; s
     }
   };
 
+  // The hero arch has its own tall frame; every other image section shows a 4:5 banner photo.
+  const mediaFrame: ImageFrame = type === "hero_banner" ? "hero" : "banner";
+
   return (
     <div className={styles.stack}>
       <form onSubmit={submit} className={styles.twoCol} noValidate>
@@ -431,8 +437,8 @@ export function SectionEditor({ type, section, onSaved }: { type: SectionType; s
           {meta.media && (
             <Card title="Images" hint="The mobile image is optional; the desktop image is used when it is empty.">
               <div className={styles.grid2}>
-                <MediaField label="Desktop image" value={s.desktop_media_id} onChange={(id) => set("desktop_media_id", id)} purpose="homepage_banner" />
-                <MediaField label="Mobile image" value={s.mobile_media_id} onChange={(id) => set("mobile_media_id", id)} purpose="homepage_banner" />
+                <MediaField label="Desktop image" value={s.desktop_media_id} onChange={(id) => set("desktop_media_id", id)} purpose="homepage_banner" frame={mediaFrame} />
+                <MediaField label="Mobile image" value={s.mobile_media_id} onChange={(id) => set("mobile_media_id", id)} purpose="homepage_banner" frame={mediaFrame} />
               </div>
             </Card>
           )}
@@ -462,6 +468,15 @@ export function SectionEditor({ type, section, onSaved }: { type: SectionType; s
               {s.selection_mode === "manual" && !(section && section.selection_mode === "manual") && (
                 <p className={styles.hint}>Save the section first, then pick and order its products below.</p>
               )}
+              {s.selection_mode === "bestsellers" && (
+                <p className={styles.hint}>
+                  Ranked by units in placed (not cancelled) orders over the last 90 days. If there isn&apos;t enough sales data yet, your
+                  hand-picked products below fill the remaining places — nothing is labelled a bestseller without real orders.
+                </p>
+              )}
+              {s.selection_mode === "featured" && (
+                <p className={styles.hint}>Shows active products with “Featured” switched on in the product editor.</p>
+              )}
             </Card>
           )}
         </div>
@@ -477,10 +492,10 @@ export function SectionEditor({ type, section, onSaved }: { type: SectionType; s
         </div>
       </form>
 
-      {section && section.selection_mode === "manual" && manualProducts.data && (
+      {section && (section.selection_mode === "manual" || section.selection_mode === "bestsellers") && manualProducts.data && (
         <ProductOrdering
           key={`${section.id}-${section.product_ids.join(",")}`}
-          title="Hand-picked products"
+          title={section.selection_mode === "bestsellers" ? "Fallback picks (used until there is enough sales data)" : "Hand-picked products"}
           hint="This order applies only to this homepage section. Only active, in-stock products are shown to customers."
           initial={manualProducts.data}
           onSave={async (ids) => {

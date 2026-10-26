@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RotateCcw, Star } from "lucide-react";
+import { BadgeCheck, RotateCcw, Star } from "lucide-react";
 import { type ReactNode, Suspense } from "react";
 
 import { ProductExperience } from "@/components/product/ProductExperience";
 import { ProductGrid, ProductGridSkeleton } from "@/components/product/ProductGrid";
+import { ProductImage } from "@/components/product/ProductImage";
 import { ProductSkeleton } from "@/components/product/ProductSkeleton";
+import { ReviewForm } from "@/components/product/ReviewForm";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState, Skeleton } from "@/components/ui/Feedback";
@@ -15,7 +17,7 @@ import { Motif } from "@/components/ui/Motif";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import type { CategoryRef, ProductDetail, ReviewSummary } from "@/lib/api/types";
 import { cardFromSummary } from "@/lib/catalog/adapters";
-import { getProduct, getReviews, getShippingRules, getSitemap, selectProducts } from "@/lib/catalog/api";
+import { getProduct, getRecommendations, getReviews, getShippingRules, getSitemap, selectProducts } from "@/lib/catalog/api";
 import { getSiteContent } from "@/lib/content";
 import { formatMoney } from "@/lib/format";
 import { siteUrl } from "@/lib/site";
@@ -118,7 +120,11 @@ async function ProductView({ params }: Pick<PageProps<"/products/[slug]">, "para
         </div>
       </div>
 
-      {reviewSummary && <Reviews summary={reviewSummary} />}
+      <Reviews summary={reviewSummary} slug={product.slug} productName={product.name} />
+
+      <Suspense fallback={<RelatedSkeleton />}>
+        <Recommended slug={product.slug} />
+      </Suspense>
 
       {collection && (
         <Suspense fallback={<RelatedSkeleton />}>
@@ -127,17 +133,6 @@ async function ProductView({ params }: Pick<PageProps<"/products/[slug]">, "para
             eyebrow="From the same collection"
             scope={{ collection: collection.slug }}
             link={`/collections/${collection.slug}`}
-            excludeSlug={product.slug}
-          />
-        </Suspense>
-      )}
-      {primary && (
-        <Suspense fallback={<RelatedSkeleton />}>
-          <MoreProducts
-            title="You may also like"
-            eyebrow="Complete the look"
-            scope={{ category: primary.slug }}
-            link={`/category/${primary.slug}`}
             excludeSlug={product.slug}
           />
         </Suspense>
@@ -311,31 +306,75 @@ function Stars({ rating, label }: { rating: number; label: string }) {
   );
 }
 
-function Reviews({ summary }: { summary: ReviewSummary }) {
-  const average = Number(summary.average ?? 0);
+function Reviews({ summary, slug, productName }: { summary: ReviewSummary | null; slug: string; productName: string }) {
+  const average = Number(summary?.average ?? 0);
   return (
     <section className={`section ${styles.reviews}`} aria-labelledby="reviews-title">
       <div className="container-narrow">
-        <SectionHeading id="reviews-title" eyebrow="Loved by families" title="Customer reviews" />
-        <p className={styles.reviewSummary}>
-          <Stars rating={average} label={`Rated ${average.toFixed(1)} out of 5`} />
-          <span>
-            {average.toFixed(1)} · {summary.count} {summary.count === 1 ? "review" : "reviews"}
-          </span>
-        </p>
-        <ul className={styles.reviewList}>
-          {summary.items.map((review, index) => (
-            <li key={`${review.created_at}-${index}`} className={styles.review}>
-              <Stars rating={review.rating} label={`${review.rating} out of 5`} />
-              {review.title && <p className={styles.reviewTitle}>{review.title}</p>}
-              {review.body && <p>{review.body}</p>}
-              <p className={styles.reviewMeta}>
-                {review.author ?? "Verified customer"} ·{" "}
-                {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(review.created_at))}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <SectionHeading id="reviews-title" eyebrow={summary ? "Loved by families" : undefined} title="Customer reviews" />
+        {summary ? (
+          <p className={styles.reviewSummary}>
+            <Stars rating={average} label={`Rated ${average.toFixed(1)} out of 5`} />
+            <span>
+              {average.toFixed(1)} · {summary.count} {summary.count === 1 ? "review" : "reviews"}
+            </span>
+          </p>
+        ) : (
+          <p className={styles.reviewMeta}>No reviews yet.</p>
+        )}
+        <div className={styles.reviewFormSlot}>
+          <ReviewForm slug={slug} productName={productName} />
+        </div>
+        {summary && (
+          <ul className={styles.reviewList}>
+            {summary.items.map((review, index) => (
+              <li key={`${review.created_at}-${index}`} className={styles.review}>
+                <Stars rating={review.rating} label={`${review.rating} out of 5`} />
+                {review.title && <p className={styles.reviewTitle}>{review.title}</p>}
+                {review.body && <p>{review.body}</p>}
+                {review.images && review.images.length > 0 && (
+                  <div className={styles.reviewPhotos}>
+                    {review.images.map((image) => (
+                      <ProductImage key={image.media_asset_id} image={image} name={`Customer photo of ${productName}`} seed={image.media_asset_id} sizes="96px" ratio="1 / 1" className={styles.reviewPhoto} />
+                    ))}
+                  </div>
+                )}
+                <p className={styles.reviewMeta}>
+                  {review.author ?? "Customer"}
+                  {review.verified_purchase && (
+                    <span className={styles.verified}>
+                      {" "}
+                      · <BadgeCheck size={14} aria-hidden="true" /> Verified purchase
+                    </span>
+                  )}{" "}
+                  · {new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(review.created_at))}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Shop-curated related styles first, then same-category bestsellers from real orders. */
+async function Recommended({ slug }: { slug: string }) {
+  const result = await getRecommendations(slug);
+  if (!result.ok) return null;
+  const { curated, bestsellers } = result.data;
+  const seen = new Set<string>([slug]);
+  const products = [...curated, ...bestsellers].filter((p) => !seen.has(p.slug) && seen.add(p.slug)).slice(0, 8);
+  if (products.length === 0) return null;
+  return (
+    <section className={`section ${styles.related}`} aria-labelledby="recommended-title">
+      <div className="container">
+        <SectionHeading
+          id="recommended-title"
+          eyebrow={curated.length ? "Complete the look" : "Popular in this category"}
+          title="You may also like"
+        />
+        <ProductGrid products={products.map(cardFromSummary)} />
       </div>
     </section>
   );

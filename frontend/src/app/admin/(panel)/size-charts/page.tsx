@@ -51,7 +51,7 @@ function ChartDialog({ chart, onClose, onSaved }: { chart: SizeChart | null; onC
       description: description.trim() || null,
       chart: { unit, columns: columns.map((c) => c.trim()), rows: rows.map((r) => r.map((c) => c.trim())) },
     };
-    const res = await run(() => (chart ? adminApi.updateSizeChart(chart.id, body) : adminApi.createSizeChart(body)), {
+    const res = await run(() => (chart ? adminApi.updateSizeChart(chart.id, body) : adminApi.createSizeChart(body).then(() => undefined)), {
       success: chart ? "Size chart saved" : "Size chart added",
     });
     if (res.ok) onSaved();

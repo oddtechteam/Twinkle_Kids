@@ -109,6 +109,11 @@ class ProductModel(Base):
     )
     # Admin-managed display badges (validated in the domain: max 3 short labels).
     badges: Mapped[list[str]] = mapped_column(JSONType, default=list, server_default=text("'[]'"))
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    # Admin-curated "you may also like" products (ordered list of product ids as strings).
+    related_product_ids: Mapped[list[str]] = mapped_column(
+        JSONType, default=list, server_default=text("'[]'")
+    )
     published_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()

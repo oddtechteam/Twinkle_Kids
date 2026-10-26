@@ -1,5 +1,6 @@
 """Read models returned by catalogue queries. Prices are derived from PricePair only."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
@@ -19,6 +20,7 @@ class ProductSort(StrEnum):
     PRICE_ASC = "price_asc"
     PRICE_DESC = "price_desc"
     NAME_ASC = "name_asc"
+    BESTSELLING = "bestselling"  # units in placed, non-cancelled orders (last 90 days)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,13 +41,25 @@ class PriceView:
 
 
 @dataclass(frozen=True, slots=True)
+class FramedImage:
+    """An admin-cropped rendition of an image for one storefront frame."""
+
+    url: str
+    width: int
+    height: int
+
+
+@dataclass(frozen=True, slots=True)
 class ImageView:
     media_asset_id: UUID
-    url: str
+    url: str  # the original
     alt_text: str | None
     width: int
     height: int
     variant_id: UUID | None = None
+    # Keyed by frame name ("product", "category", ...). A frame without an entry shows the
+    # original, centred and cropped by CSS (object-fit: cover).
+    crops: Mapping[str, FramedImage] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +139,8 @@ class ProductDetail:
     created_at: datetime
     updated_at: datetime
     badges: list[str] = field(default_factory=list)
+    is_featured: bool = False
+    related_product_ids: list[UUID] = field(default_factory=list)  # admin view only
     size_chart_id: UUID | None = None
     collection_ids: list[UUID] = field(default_factory=list)  # admin view only
     collections: list[CollectionRef] = field(default_factory=list)  # published, storefront view
@@ -222,6 +238,8 @@ class ReviewView:
     body: str | None
     author: str | None  # first name only
     created_at: datetime
+    verified_purchase: bool = False  # backed by a recorded order, never set by hand
+    images: list[ImageView] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,3 +263,9 @@ class SitemapView:
     categories: list[SitemapEntry]
     collections: list[SitemapEntry]
     pages: list[SitemapEntry]
+
+
+@dataclass(frozen=True, slots=True)
+class Recommendations:
+    curated: list[ProductSummary]  # admin-picked "you may also like"
+    bestsellers: list[ProductSummary]  # same category, by recorded order data

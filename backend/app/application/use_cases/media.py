@@ -1,4 +1,5 @@
-"""Media library use cases: validated upload, retrieval with URL resolution, listing, deletion.
+"""Media library use cases: validated upload, retrieval with URL resolution, listing, deletion,
+and per-frame cropping.
 
 Postgres is the source of truth for which files exist; the object store holds the bytes.
 """
@@ -10,7 +11,16 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from app.domain.entities.media import ImageInfo, MediaAsset, MediaPurpose, MediaVisibility
+from app.domain.entities.media import (
+    FRAME_SPECS,
+    CropRect,
+    ImageCrop,
+    ImageFrame,
+    ImageInfo,
+    MediaAsset,
+    MediaPurpose,
+    MediaVisibility,
+)
 from app.domain.errors import (
     ConflictError,
     MediaTooLargeError,
@@ -19,6 +29,7 @@ from app.domain.errors import (
     UnsupportedMediaTypeError,
 )
 from app.domain.repositories.media import (
+    ImageCropper,
     ImageInspector,
     MediaAssetRepository,
     ObjectStorage,
@@ -63,6 +74,7 @@ class UploadMediaCommand:
 class MediaView:
     asset: MediaAsset
     url: str
+    crop_urls: Mapping[ImageFrame, str] = field(default_factory=dict)
 
 
 def _normalise_type(content_type: str | None) -> str | None:
@@ -111,6 +123,16 @@ class MediaUrlResolver:
             return self._storage.public_url(asset.bucket, asset.object_key)
         return self._storage.presigned_url(
             asset.bucket, asset.object_key, expires_in=PRESIGNED_URL_TTL_SECONDS
+        )
+
+    def view(self, asset: MediaAsset) -> MediaView:
+        return MediaView(
+            asset=asset,
+            url=self.url_for(asset),
+            crop_urls={
+                frame: self._storage.public_url(asset.bucket, crop.object_key)
+                for frame, crop in asset.crops.items()
+            },
         )
 
 
@@ -179,7 +201,7 @@ class UploadMedia:
             self._delete_object_quietly(bucket, key)
             raise
 
-        return MediaView(asset=asset, url=self._urls.url_for(asset))
+        return self._urls.view(asset)
 
     def _delete_object_quietly(self, bucket: str, key: str) -> None:
         try:
@@ -197,7 +219,7 @@ class GetMedia:
         asset = self._repository.get(asset_id)
         if asset is None or (public_only and asset.visibility is not MediaVisibility.PUBLIC):
             raise NotFoundError("Media not found.")
-        return MediaView(asset=asset, url=self._urls.url_for(asset))
+        return self._urls.view(asset)
 
 
 class ListMedia:
@@ -209,7 +231,7 @@ class ListMedia:
         self, *, purpose: MediaPurpose | None = None, limit: int = 50, offset: int = 0
     ) -> Sequence[MediaView]:
         assets = self._repository.list(purpose=purpose, limit=limit, offset=offset)
-        return [MediaView(asset=a, url=self._urls.url_for(a)) for a in assets]
+        return [self._urls.view(a) for a in assets]
 
 
 class DeleteMedia:
@@ -232,15 +254,16 @@ class DeleteMedia:
         # Remove the reference first so nothing ever points at a missing object.
         self._repository.delete(asset_id)
         self._uow.commit()
-        try:
-            self._storage.delete(asset.bucket, asset.object_key)
-        except Exception:
-            logger.exception(
-                "Media row %s deleted but object %s/%s remains (orphan)",
-                asset_id,
-                asset.bucket,
-                asset.object_key,
-            )
+        for key in [asset.object_key, *(crop.object_key for crop in asset.crops.values())]:
+            try:
+                self._storage.delete(asset.bucket, key)
+            except Exception:
+                logger.exception(
+                    "Media row %s deleted but object %s/%s remains (orphan)",
+                    asset_id,
+                    asset.bucket,
+                    key,
+                )
 
 
 class UpdateMediaDetails:
@@ -258,7 +281,7 @@ class UpdateMediaDetails:
         updated = replace(asset, alt_text=_clean_text(alt_text, MAX_ALT_TEXT))
         self._repository.update(updated)
         self._uow.commit()
-        return MediaView(asset=updated, url=self._urls.url_for(updated))
+        return self._urls.view(updated)
 
     def usage(self, asset_id: UUID) -> list[str]:
         if self._repository.get(asset_id) is None:
@@ -269,7 +292,8 @@ class UpdateMediaDetails:
 class ReplaceMedia:
     """Swap the file behind an asset while keeping its id, so every reference (products,
     categories, banners, settings) picks up the new image. The new file gets a new immutable
-    key, so CDN caches never serve the old bytes."""
+    key, so CDN caches never serve the old bytes. Crops belonged to the old picture, so they are
+    cleared and the storefront falls back to a centred crop until the admin crops again."""
 
     def __init__(
         self,
@@ -290,7 +314,12 @@ class ReplaceMedia:
         self._urls = MediaUrlResolver(storage)
 
     def execute(
-        self, asset_id: UUID, *, data: bytes, declared_content_type: str | None, filename: str | None
+        self,
+        asset_id: UUID,
+        *,
+        data: bytes,
+        declared_content_type: str | None,
+        filename: str | None,
     ) -> MediaView:
         asset = self._repository.get(asset_id)
         if asset is None:
@@ -315,6 +344,7 @@ class ReplaceMedia:
             height=info.height,
             sha256=hashlib.sha256(data).hexdigest(),
             original_filename=_clean_text(filename, MAX_FILENAME) or asset.original_filename,
+            crops={},
         )
         try:
             self._repository.update(updated)
@@ -323,8 +353,89 @@ class ReplaceMedia:
             self._uow.rollback()
             _quiet_delete(self._storage, asset.bucket, key)
             raise
-        _quiet_delete(self._storage, asset.bucket, asset.object_key)  # old bytes unreferenced now
-        return MediaView(asset=updated, url=self._urls.url_for(updated))
+        # The old bytes and their renditions are unreferenced now.
+        for old_key in [asset.object_key, *(c.object_key for c in asset.crops.values())]:
+            _quiet_delete(self._storage, asset.bucket, old_key)
+        return self._urls.view(updated)
+
+
+class CropMedia:
+    """Save the composition for one frame: cut it from the untouched original, store it as an
+    optimised WebP under a new immutable key, and remember the rectangle so it can be edited."""
+
+    def __init__(
+        self,
+        *,
+        storage: ObjectStorage,
+        repository: MediaAssetRepository,
+        uow: UnitOfWork,
+        cropper: ImageCropper,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        new_id: Callable[[], UUID] = uuid4,
+    ) -> None:
+        self._storage = storage
+        self._repository = repository
+        self._uow = uow
+        self._cropper = cropper
+        self._clock = clock
+        self._new_id = new_id
+        self._urls = MediaUrlResolver(storage)
+
+    def execute(self, asset_id: UUID, frame: ImageFrame, rect: CropRect) -> MediaView:
+        asset = self._repository.get(asset_id)
+        if asset is None:
+            raise NotFoundError("Media not found.")
+        if asset.visibility is not MediaVisibility.PUBLIC:
+            raise MediaValidationError("Only storefront (public) images can be cropped.")
+        if not (
+            0 <= rect.x < 1 and 0 <= rect.y < 1 and 0 < rect.width <= 1 and 0 < rect.height <= 1
+        ):
+            raise MediaValidationError("The crop area must lie inside the image.")
+
+        original = self._storage.get(asset.bucket, asset.object_key)
+        rendered = self._cropper.render(original.data, rect, FRAME_SPECS[frame])
+        suffix = self._new_id().hex[:8]
+        key = f"{asset.purpose.value}/{asset.id.hex[:2]}/{asset.id}-{frame.value}-{suffix}.webp"
+        self._storage.put(
+            asset.bucket,
+            key,
+            rendered.data,
+            content_type=rendered.content_type,
+            cache_control=PUBLIC_CACHE_CONTROL,
+        )
+        crop = ImageCrop(
+            rect=rendered.rect,
+            object_key=key,
+            width=rendered.width,
+            height=rendered.height,
+            updated_at=self._clock(),
+        )
+        previous = asset.crops.get(frame)
+        updated = replace(asset, crops={**asset.crops, frame: crop})
+        try:
+            self._repository.update(updated)
+            self._uow.commit()
+        except Exception:
+            self._uow.rollback()
+            _quiet_delete(self._storage, asset.bucket, key)
+            raise
+        if previous is not None:
+            _quiet_delete(self._storage, asset.bucket, previous.object_key)
+        return self._urls.view(updated)
+
+    def remove(self, asset_id: UUID, frame: ImageFrame) -> MediaView:
+        """Forget the crop for ``frame``; the storefront goes back to a centred crop."""
+        asset = self._repository.get(asset_id)
+        if asset is None:
+            raise NotFoundError("Media not found.")
+        previous = asset.crops.get(frame)
+        if previous is None:
+            return self._urls.view(asset)
+        updated = replace(asset, crops={f: c for f, c in asset.crops.items() if f is not frame})
+        self._repository.update(updated)
+        self._uow.commit()
+        _quiet_delete(self._storage, asset.bucket, previous.object_key)
+        return self._urls.view(updated)
 
 
 def _quiet_delete(storage: ObjectStorage, bucket: str, key: str) -> None:

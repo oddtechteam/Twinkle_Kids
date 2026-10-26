@@ -1,0 +1,127 @@
+.form {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--tk-paper);
+  box-shadow: var(--shadow-xs);
+}
+
+.rating {
+  display: flex;
+  gap: var(--space-1);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.rating .label {
+  width: 100%;
+}
+
+.star {
+  display: inline-flex;
+  cursor: pointer;
+  color: var(--color-border-strong);
+}
+
+.star[data-on="true"] {
+  color: var(--tk-gold);
+}
+
+.star[data-on="true"] svg {
+  fill: currentColor;
+}
+
+.star:has(input:focus-visible) {
+  outline: 2px solid var(--tk-navy);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.field {
+  display: grid;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 6rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font: inherit;
+  resize: vertical;
+}
+
+.photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.photo,
+.addPhoto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: var(--tk-navy-mist);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.photo button {
+  display: inline-flex;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+.addPhoto {
+  cursor: pointer;
+  font-weight: var(--weight-bold);
+}
+
+.addPhoto:has(input:focus-visible) {
+  outline: 2px solid var(--tk-navy);
+  outline-offset: 2px;
+}
+
+.note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.note a {
+  font-weight: var(--weight-bold);
+  text-decoration: underline;
+}
+
+.success {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--tk-navy-mist);
+  font-weight: var(--weight-bold);
+}
+
+.error {
+  color: var(--tk-danger);
+  font-size: var(--text-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

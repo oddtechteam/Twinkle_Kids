@@ -7,6 +7,7 @@ import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import type { ProductImage as ProductImageData } from "@/lib/api/types";
 import { isRenderableImage } from "@/lib/catalog/adapters";
+import { framedImage } from "@/lib/media/frames";
 import { ProductArt, artFor } from "./ProductArt";
 import styles from "./ProductGallery.module.css";
 
@@ -77,7 +78,7 @@ export function ProductGallery({ images, name, slug, focusVariantIds = [] }: Gal
             aria-label={`${index + 1} of ${usable.length}`}
           >
             <Image
-              src={image.url}
+              src={framedImage(image, "product").url}
               alt={image.alt_text ?? `${name} — image ${index + 1}`}
               fill
               loading={index === 0 ? "eager" : "lazy"}
@@ -182,7 +183,7 @@ export function ProductGallery({ images, name, slug, focusVariantIds = [] }: Gal
                   aria-label={`Show image ${index + 1}`}
                   aria-current={index === active ? "true" : undefined}
                 >
-                  <Image src={image.url} alt="" fill sizes="88px" className={styles.image} />
+                  <Image src={framedImage(image, "product").url} alt="" fill sizes="88px" className={styles.image} />
                 </button>
               </li>
             ))}

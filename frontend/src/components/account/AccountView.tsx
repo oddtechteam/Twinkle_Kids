@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Heart, LogOut, Mail, Phone, RotateCcw, ShieldCheck, ShoppingBag, UserRound } from "lucide-react";
+import { Heart, LogOut, Mail, Phone, RotateCcw, ShieldCheck, UserRound } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -15,6 +15,8 @@ import { fetchMe, register, safeNextPath, signIn, signOut } from "@/lib/account/
 import { ApiError } from "@/lib/api/client";
 import type { CustomerProfile } from "@/lib/api/types";
 import { useBag } from "@/lib/bag/BagProvider";
+import type { OrderPolicy } from "@/lib/content/types";
+import { AddressesPanel, OrdersPanel, ProfilePanel } from "./AccountPanels";
 import styles from "./AccountView.module.css";
 
 type State = { status: "loading" } | { status: "error" } | { status: "guest" } | { status: "signed-in"; user: CustomerProfile };
@@ -27,7 +29,7 @@ function messageFor(error: unknown): string {
 }
 
 /** Sign in / create an account, or the signed-in customer's overview. */
-export function AccountView() {
+export function AccountView({ orderPolicy = null }: { orderPolicy?: OrderPolicy | null }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const bag = useBag();
   const router = useRouter();
@@ -44,8 +46,8 @@ export function AccountView() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the session once on mount
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
   }, []);
 
   async function onSignedIn(user: CustomerProfile) {
@@ -77,6 +79,7 @@ export function AccountView() {
       {state.status === "signed-in" && (
         <Overview
           user={state.user}
+          orderPolicy={orderPolicy}
           onSignedOut={async () => {
             await bag.refresh();
             setState({ status: "guest" });
@@ -173,6 +176,11 @@ function AuthForms({ onSignedIn }: { onSignedIn: (user: CustomerProfile) => void
           minLength={mode === "register" ? 10 : undefined}
           maxLength={128}
         />
+        {mode === "sign-in" && (
+          <Link href="/account/forgot-password" className={styles.inlineLink}>
+            Forgot your password?
+          </Link>
+        )}
         {error && (
           <p id={errorId} className={styles.error} role="alert">
             {error}
@@ -186,10 +194,20 @@ function AuthForms({ onSignedIn }: { onSignedIn: (user: CustomerProfile) => void
   );
 }
 
-function Overview({ user, onSignedOut }: { user: CustomerProfile; onSignedOut: () => Promise<void> }) {
+function Overview({
+  user,
+  onSignedOut,
+  orderPolicy,
+}: {
+  user: CustomerProfile;
+  onSignedOut: () => Promise<void>;
+  orderPolicy: OrderPolicy | null;
+}) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const firstName = user.full_name.split(" ")[0] || user.full_name;
+  const [profile, setProfile] = useState(user);
+  const [tab, setTab] = useState<"orders" | "addresses" | "profile">("orders");
+  const firstName = profile.full_name.split(" ")[0] || profile.full_name;
 
   async function handleSignOut() {
     setBusy(true);
@@ -204,51 +222,63 @@ function Overview({ user, onSignedOut }: { user: CustomerProfile; onSignedOut: (
   }
 
   return (
-    <section className={styles.card} aria-labelledby="account-title">
-      <span className={styles.icon}>
-        <UserRound aria-hidden="true" size={26} />
-      </span>
-      <h1 id="account-title" className={styles.title}>
-        Hello, {firstName}
-      </h1>
-      <dl className={styles.details}>
-        <dt>
-          <Mail aria-hidden="true" size={16} /> Email
-        </dt>
-        <dd>{user.email}</dd>
-        {user.phone && (
-          <>
-            <dt>
-              <Phone aria-hidden="true" size={16} /> Mobile
-            </dt>
-            <dd>{user.phone}</dd>
-          </>
-        )}
-      </dl>
-
-      <div className={styles.links}>
-        <ButtonLink href="/bag" variant="soft" iconStart={<ShoppingBag aria-hidden="true" />}>
-          My bag
-        </ButtonLink>
-        <ButtonLink href="/wishlist" variant="soft" iconStart={<Heart aria-hidden="true" />}>
-          Wishlist
-        </ButtonLink>
-        {user.is_staff && (
-          <ButtonLink href="/admin" variant="outline" iconStart={<ShieldCheck aria-hidden="true" />}>
-            Admin panel
+    <div className={styles.dashboard}>
+      <section className={styles.header} aria-labelledby="account-title">
+        <span className={styles.icon}>
+          <UserRound aria-hidden="true" size={26} />
+        </span>
+        <div className={styles.headerText}>
+          <h1 id="account-title" className={styles.title}>
+            Hello, {firstName}
+          </h1>
+          <p className={styles.lede}>
+            <Mail aria-hidden="true" size={14} /> {profile.email}
+            {profile.phone && (
+              <>
+                {" · "}
+                <Phone aria-hidden="true" size={14} /> {profile.phone}
+              </>
+            )}
+          </p>
+        </div>
+        <div className={styles.links}>
+          <ButtonLink href="/wishlist" variant="soft" size="sm" iconStart={<Heart aria-hidden="true" />}>
+            Wishlist
           </ButtonLink>
-        )}
-      </div>
-      <p className={styles.lede}>
-        Your past orders will be listed here once online checkout opens.{" "}
-        <Link href="/shop" className={styles.inlineLink}>
-          Continue shopping
-        </Link>
-      </p>
+          {profile.is_staff && (
+            <ButtonLink href="/admin" variant="outline" size="sm" iconStart={<ShieldCheck aria-hidden="true" />}>
+              Admin panel
+            </ButtonLink>
+          )}
+          <Button variant="link" size="sm" onClick={() => void handleSignOut()} loading={busy} iconStart={<LogOut aria-hidden="true" size={16} />}>
+            Sign out
+          </Button>
+        </div>
+      </section>
 
-      <Button variant="link" onClick={() => void handleSignOut()} loading={busy} iconStart={<LogOut aria-hidden="true" size={16} />}>
-        Sign out
-      </Button>
-    </section>
+      <div className={styles.tabs} role="group" aria-label="Account sections">
+        {(
+          [
+            ["orders", "My orders"],
+            ["addresses", "Addresses"],
+            ["profile", "Profile & password"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={tab === key}
+            className={`${styles.tab} ${tab === key ? styles.tabActive : ""}`}
+            onClick={() => setTab(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "orders" && <OrdersPanel policy={orderPolicy} />}
+      {tab === "addresses" && <AddressesPanel />}
+      {tab === "profile" && <ProfilePanel user={profile} onUpdated={setProfile} />}
+    </div>
   );
 }

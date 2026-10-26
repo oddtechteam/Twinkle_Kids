@@ -11,6 +11,11 @@ const DEFAULT_BASE_URL = "http://localhost:8000";
 const API_PREFIX = "/api/v1";
 const CSRF_COOKIE = "tk_csrf";
 const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+/** Request time limit. Development defaults higher: a far-away dev database (or one waking
+ *  from auto-suspend) can make a cold request legitimately slow. Override with
+ *  NEXT_PUBLIC_API_TIMEOUT_MS. */
+const DEFAULT_TIMEOUT_MS =
+  Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || (process.env.NODE_ENV === "production" ? 15000 : 45000);
 
 export class ApiError extends Error {
   constructor(
@@ -46,20 +51,29 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { acceptStatuses = [], timeoutMs = 15000, headers, ...init } = options;
+  const { acceptStatuses = [], timeoutMs = DEFAULT_TIMEOUT_MS, headers, ...init } = options;
   const method = (init.method ?? "GET").toUpperCase();
   const csrf = UNSAFE.has(method) ? readCookie(CSRF_COOKIE) : null;
 
-  const response = await fetch(apiUrl(path), {
-    credentials: "same-origin",
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(csrf ? { "X-CSRF-Token": csrf } : {}),
-      ...headers,
-    },
-    signal: init.signal ?? AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(apiUrl(path), {
+      credentials: "same-origin",
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...(csrf ? { "X-CSRF-Token": csrf } : {}),
+        ...headers,
+      },
+      signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    // AbortSignal.timeout rejects with a bare "signal timed out" DOMException.
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new ApiError("The store took too long to respond. Please try again.", 504, null);
+    }
+    throw error;
+  }
 
   if (response.status === 204) return undefined as T;
   const body: unknown = response.headers.get("content-type")?.includes("application/json")

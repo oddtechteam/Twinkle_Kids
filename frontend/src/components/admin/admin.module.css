@@ -758,6 +758,42 @@
   object-fit: cover;
 }
 
+/* Per-frame crops in the media library. */
+.cropList {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.cropItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.cropThumb {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 3.5rem;
+}
+
+.cropThumb > * {
+  width: auto;
+  height: 3.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.cropText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
 /* ---- Misc ---- */
 
 .statGrid {
@@ -919,4 +955,118 @@
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--tk-gold-text);
+}
+
+/* ---- Orders, WhatsApp requests, inventory, analytics ---- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.toolbar .input {
+  flex: 1 1 16rem;
+  width: auto;
+}
+
+.filter .select {
+  min-width: 10rem;
+}
+
+.rowLink {
+  font-weight: var(--weight-heavy);
+  color: var(--color-heading);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--tk-navy) 30%, transparent);
+  text-underline-offset: 0.2em;
+}
+
+.rowLink:hover {
+  color: var(--color-accent);
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+}
+
+.kv dt {
+  font-weight: var(--weight-bold);
+  color: var(--color-text-muted);
+}
+
+.kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.grand {
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-heavy);
+}
+
+.message {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--tk-ivory);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.inlineRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.inlineRow > * {
+  flex: 1 1 12rem;
+}
+
+.inlineRow > button {
+  flex: 0 0 auto;
+}
+
+.warnText {
+  font-weight: var(--weight-bold);
+  color: var(--tk-coral-strong);
+}
+
+.qtyInput {
+  width: 5rem;
+}
+
+button.chip {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+button.chip[aria-pressed="true"] {
+  border-color: var(--tk-navy);
 }

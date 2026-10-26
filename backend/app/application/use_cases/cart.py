@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
 
+from app.application.content_settings import shipping_settings
 from app.application.dto.catalog import ImageView, PriceView
 from app.application.ports import CatalogQueries
 from app.domain.entities.catalog import Product, ProductVariant
@@ -71,8 +72,19 @@ class CartView:
     has_price_changes: bool
 
 
-def shipping_fee(rules: Sequence[ShippingRule], subtotal: Decimal) -> Decimal | None:
-    """Flat fee from the first active rule (lowest priority) whose band contains the subtotal."""
+def shipping_fee(
+    rules: Sequence[ShippingRule],
+    subtotal: Decimal,
+    *,
+    free_threshold: Decimal | None = None,
+) -> Decimal | None:
+    """Delivery fee for an order subtotal, from the shop's own rules (no courier rates).
+
+    A configured free-shipping threshold wins; otherwise the first active rule (lowest
+    priority) whose band contains the subtotal. None = no rule matches (shop confirms).
+    """
+    if free_threshold is not None and subtotal >= free_threshold:
+        return Decimal("0.00")
     matching = [
         r
         for r in rules
@@ -93,9 +105,7 @@ def _stock_limit(product: Product, variant: ProductVariant) -> int:
 
 
 def _purchasable(product: Product | None, variant_id: UUID) -> tuple[Product, ProductVariant]:
-    variant = (
-        next((v for v in product.variants if v.id == variant_id), None) if product else None
-    )
+    variant = next((v for v in product.variants if v.id == variant_id), None) if product else None
     if product is None or variant is None:
         raise NotFoundError("This option is no longer available.")
     if product.status is not ProductStatus.ACTIVE or not variant.is_active:
@@ -168,9 +178,12 @@ class CartService:
             price: PricePair | None = None
             issue: str | None = None
             max_quantity = 0
-            if product is None or variant is None:
-                issue = "This item is no longer available."
-            elif product.status is not ProductStatus.ACTIVE or not variant.is_active:
+            if (
+                product is None
+                or variant is None
+                or product.status is not ProductStatus.ACTIVE
+                or not variant.is_active
+            ):
                 issue = "This item is no longer available."
             else:
                 try:
@@ -220,7 +233,14 @@ class CartService:
             )
 
         totals = calculate_totals(priced)
-        shipping = shipping_fee(self._shipping.list(), totals.subtotal) if priced else None
+        threshold = shipping_settings(
+            self._settings.get().shipping_settings
+        ).free_shipping_threshold
+        shipping = (
+            shipping_fee(self._shipping.list(), totals.subtotal, free_threshold=threshold)
+            if priced
+            else None
+        )
         grand = totals.subtotal + (shipping or Decimal("0.00"))
         return CartView(
             id=cart.id,

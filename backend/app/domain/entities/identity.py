@@ -99,3 +99,14 @@ def validate_password(password: str, *, email: str, min_length: int = MIN_PASSWO
     local_part = email.split("@", 1)[0].casefold()
     if len(local_part) >= 4 and local_part in password.casefold():
         raise DomainValidationError("Password must not contain your email address.")
+
+
+@dataclass(frozen=True, slots=True)
+class PasswordResetToken:
+    id: UUID
+    user_id: UUID
+    expires_at: datetime
+    used_at: datetime | None = None
+
+    def is_usable(self, now: datetime) -> bool:
+        return self.used_at is None and now < self.expires_at

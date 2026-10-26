@@ -12,8 +12,8 @@ from app.api.deps import (
 from app.api.schemas.content import (
     CollectionOut,
     PublicPageOut,
-    PublicSiteOut,
     PublicShippingRuleOut,
+    PublicSiteOut,
     PublishedHomepageOut,
 )
 

@@ -2,12 +2,15 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from app.domain.entities.identity import AuthSession, Role, User
+from app.domain.entities.address import PostalAddress, SavedAddress
+from app.domain.entities.identity import AuthSession, PasswordResetToken, Role, User
 from app.infrastructure.db.models.identity import (
+    AddressModel,
     AuditLogModel,
+    PasswordResetTokenModel,
     RoleModel,
     UserModel,
     UserRoleModel,
@@ -96,6 +99,13 @@ class SqlAlchemyUserRepository:
             update(UserModel).where(UserModel.id == user_id).values(password_hash=password_hash)
         )
 
+    def update_profile(self, user_id: UUID, *, full_name: str, phone: str | None) -> None:
+        self._session.execute(
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(full_name=full_name, phone=phone)
+        )
+
 
 class SqlAlchemySessionRepository:
     def __init__(self, session: Session) -> None:
@@ -143,6 +153,149 @@ class SqlAlchemySessionRepository:
             .where(UserSessionModel.user_id == user_id, UserSessionModel.revoked_at.is_(None))
             .values(revoked_at=at)
         )
+
+    def revoke_others_for_user(self, user_id: UUID, keep_session_id: UUID, at: datetime) -> None:
+        self._session.execute(
+            update(UserSessionModel)
+            .where(
+                UserSessionModel.user_id == user_id,
+                UserSessionModel.id != keep_session_id,
+                UserSessionModel.revoked_at.is_(None),
+            )
+            .values(revoked_at=at)
+        )
+
+
+class SqlAlchemyPasswordResetRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def add(self, token: PasswordResetToken, *, token_hash: str, requested_ip: str | None) -> None:
+        self._session.add(
+            PasswordResetTokenModel(
+                id=token.id,
+                user_id=token.user_id,
+                token_hash=token_hash,
+                expires_at=token.expires_at,
+                requested_ip=requested_ip[:45] if requested_ip else None,
+            )
+        )
+
+    def get_by_hash(self, token_hash: str) -> PasswordResetToken | None:
+        row = self._session.scalars(
+            select(PasswordResetTokenModel).where(PasswordResetTokenModel.token_hash == token_hash)
+        ).first()
+        if row is None:
+            return None
+        return PasswordResetToken(
+            id=row.id, user_id=row.user_id, expires_at=row.expires_at, used_at=row.used_at
+        )
+
+    def mark_used(self, token_id: UUID, at: datetime) -> None:
+        self._session.execute(
+            update(PasswordResetTokenModel)
+            .where(
+                PasswordResetTokenModel.id == token_id, PasswordResetTokenModel.used_at.is_(None)
+            )
+            .values(used_at=at)
+        )
+
+    def invalidate_for_user(self, user_id: UUID, at: datetime) -> None:
+        self._session.execute(
+            update(PasswordResetTokenModel)
+            .where(
+                PasswordResetTokenModel.user_id == user_id,
+                PasswordResetTokenModel.used_at.is_(None),
+            )
+            .values(used_at=at)
+        )
+
+
+def _address_to_entity(row: AddressModel) -> SavedAddress:
+    return SavedAddress(
+        id=row.id,
+        user_id=row.user_id,
+        label=row.label,
+        is_default=row.is_default,
+        address=PostalAddress(
+            full_name=row.full_name,
+            phone=row.phone,
+            line1=row.line1,
+            line2=row.line2,
+            landmark=row.landmark,
+            city=row.city,
+            state=row.state,
+            postal_code=row.postal_code,
+            country_code=row.country_code,
+        ),
+    )
+
+
+class SqlAlchemyAddressRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list(self, user_id: UUID) -> list[SavedAddress]:
+        rows = self._session.scalars(
+            select(AddressModel)
+            .where(AddressModel.user_id == user_id)
+            .order_by(AddressModel.is_default.desc(), AddressModel.created_at)
+        )
+        return [_address_to_entity(row) for row in rows]
+
+    def get(self, address_id: UUID) -> SavedAddress | None:
+        row = self._session.get(AddressModel, address_id)
+        return _address_to_entity(row) if row else None
+
+    def add(self, address: SavedAddress) -> None:
+        a = address.address
+        self._session.add(
+            AddressModel(
+                id=address.id,
+                user_id=address.user_id,
+                label=address.label,
+                is_default=address.is_default,
+                full_name=a.full_name,
+                phone=a.phone,
+                line1=a.line1,
+                line2=a.line2,
+                landmark=a.landmark,
+                city=a.city,
+                state=a.state,
+                postal_code=a.postal_code,
+                country_code=a.country_code,
+            )
+        )
+        self._session.flush()
+
+    def save(self, address: SavedAddress) -> None:
+        row = self._session.get(AddressModel, address.id)
+        if row is None:
+            return
+        a = address.address
+        row.label = address.label
+        row.is_default = address.is_default
+        row.full_name = a.full_name
+        row.phone = a.phone
+        row.line1 = a.line1
+        row.line2 = a.line2
+        row.landmark = a.landmark
+        row.city = a.city
+        row.state = a.state
+        row.postal_code = a.postal_code
+        row.country_code = a.country_code
+        self._session.flush()
+
+    def delete(self, address_id: UUID) -> None:
+        self._session.execute(delete(AddressModel).where(AddressModel.id == address_id))
+
+    def clear_default(self, user_id: UUID) -> None:
+        self._session.execute(
+            update(AddressModel)
+            .where(AddressModel.user_id == user_id, AddressModel.is_default.is_(True))
+            .values(is_default=False)
+        )
+        self._session.flush()
 
 
 class SqlAlchemyAuditLogRepository:

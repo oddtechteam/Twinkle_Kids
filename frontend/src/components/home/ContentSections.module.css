@@ -115,13 +115,14 @@
 
 @media (min-width: 960px) {
   .occasion {
-    grid-template-columns: 1fr 1fr;
+    /* A fixed-width photo column keeps the 4:5 frame at a sensible height. */
+    grid-template-columns: minmax(0, 28rem) 1fr;
   }
 }
 
 .occasionVisual {
   position: relative;
-  min-height: 18rem;
+  aspect-ratio: 4 / 5; /* the "banner" crop frame, shared with the promo banner */
 }
 
 .occasionPhoto {

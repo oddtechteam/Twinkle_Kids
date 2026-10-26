@@ -26,7 +26,7 @@ export function FeaturedCollections({ section }: { section: FeaturedCollectionsS
                       src={item.image.src}
                       alt=""
                       fill
-                      sizes="(min-width: 960px) 33vw, 100vw"
+                      sizes="(min-width: 1100px) 33vw, (min-width: 760px) 50vw, 100vw"
                       className={styles.photo}
                       style={{ objectPosition: item.image.focal ?? "50% 40%" }}
                     />

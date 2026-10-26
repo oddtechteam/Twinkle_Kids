@@ -1,20 +1,27 @@
 """Dependency wiring: the only place where API, application and infrastructure meet."""
 
 from collections.abc import Callable, Iterator, Sequence
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
+from app.application.use_cases.account import AccountPolicy, AccountService
+from app.application.use_cases.after_sale import AfterSaleService
+from app.application.use_cases.analytics import AnalyticsReader
 from app.application.use_cases.auth import AuthService, RequestContext
 from app.application.use_cases.cart import CartService
 from app.application.use_cases.catalog_admin import CategoryCommands, ProductCommands
 from app.application.use_cases.catalog_queries import CatalogReader
 from app.application.use_cases.check_health import CheckHealth
 from app.application.use_cases.collections import CollectionService
+from app.application.use_cases.coupons import CouponService
 from app.application.use_cases.dashboard import DashboardReader
 from app.application.use_cases.homepage import HomepageBuilder, PublicHomepage
+from app.application.use_cases.inventory import InventoryService
 from app.application.use_cases.media import (
+    CropMedia,
     DeleteMedia,
     GetMedia,
     ListMedia,
@@ -23,6 +30,15 @@ from app.application.use_cases.media import (
     UpdateMediaDetails,
     UploadMedia,
 )
+from app.application.use_cases.notifications import Notifier
+from app.application.use_cases.orders import (
+    CheckoutService,
+    CustomerOrders,
+    OrderAdmin,
+    OrderWriter,
+    WhatsAppAdmin,
+)
+from app.application.use_cases.reviews import ReviewService
 from app.application.use_cases.site import (
     NavigationService,
     PageService,
@@ -31,28 +47,38 @@ from app.application.use_cases.site import (
     ShippingService,
     SizeChartService,
 )
+from app.application.use_cases.staff import StaffService
 from app.application.use_cases.whatsapp import WhatsAppOrdering
 from app.bootstrap import Container
 from app.core.config import Settings
 from app.core.version import __version__
-from app.domain.entities.identity import Permission, User
+from app.domain.entities.identity import AuthSession, Permission, User
 from app.domain.errors import AuthenticationError, PermissionDeniedError
 from app.domain.repositories.health import HealthProbe
+from app.infrastructure.db.analytics_queries import SqlAlchemyAnalyticsQueries
 from app.infrastructure.db.catalog_queries import SqlAlchemyCatalogQueries
 from app.infrastructure.db.dashboard_queries import SqlAlchemyDashboardQueries
+from app.infrastructure.db.inventory_store import SqlAlchemyInventoryStore
+from app.infrastructure.db.notification_log import SqlAlchemyNotificationLog
+from app.infrastructure.db.order_queries import SqlAlchemyOrderQueries
+from app.infrastructure.db.order_request_store import SqlAlchemyOrderRequestStore
 from app.infrastructure.db.repositories.catalog import (
     SqlAlchemyCategoryRepository,
     SqlAlchemyCollectionRepository,
     SqlAlchemyProductRepository,
 )
-from app.infrastructure.db.repositories.identity import (
-    SqlAlchemyAuditLogRepository,
-    SqlAlchemySessionRepository,
-    SqlAlchemyUserRepository,
-)
 from app.infrastructure.db.repositories.commerce import (
     SqlAlchemyCartRepository,
+    SqlAlchemyCouponRepository,
+    SqlAlchemyOrderRepository,
     SqlAlchemyWhatsAppRequestRepository,
+)
+from app.infrastructure.db.repositories.identity import (
+    SqlAlchemyAddressRepository,
+    SqlAlchemyAuditLogRepository,
+    SqlAlchemyPasswordResetRepository,
+    SqlAlchemySessionRepository,
+    SqlAlchemyUserRepository,
 )
 from app.infrastructure.db.repositories.inventory import SqlAlchemyInventoryLedger
 from app.infrastructure.db.repositories.media import SqlAlchemyMediaAssetRepository
@@ -65,6 +91,8 @@ from app.infrastructure.db.repositories.site import (
     SqlAlchemyShippingRuleRepository,
     SqlAlchemySizeChartRepository,
 )
+from app.infrastructure.db.review_store import SqlAlchemyReviewStore
+from app.infrastructure.db.staff_store import SqlAlchemyStaffStore
 from app.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
 
@@ -155,6 +183,16 @@ def get_current_user(
 CurrentUserDep = Annotated[User, Depends(get_current_user)]
 
 
+def get_current_session(
+    auth: AuthServiceDep, token: Annotated[str | None, Depends(session_token)]
+) -> AuthSession:
+    _user, session = auth.authenticate(token)
+    return session
+
+
+CurrentSessionDep = Annotated[AuthSession, Depends(get_current_session)]
+
+
 def get_optional_user(
     auth: AuthServiceDep, token: Annotated[str | None, Depends(session_token)]
 ) -> User | None:
@@ -189,13 +227,18 @@ CatalogManagerDep = Annotated[User, Depends(require_permission(Permission.CATALO
 ContentManagerDep = Annotated[User, Depends(require_permission(Permission.CONTENT_MANAGE))]
 MediaManagerDep = Annotated[User, Depends(require_permission(Permission.MEDIA_MANAGE))]
 SettingsManagerDep = Annotated[User, Depends(require_permission(Permission.SETTINGS_MANAGE))]
+OrdersManagerDep = Annotated[User, Depends(require_permission(Permission.ORDERS_MANAGE))]
+InventoryManagerDep = Annotated[User, Depends(require_permission(Permission.INVENTORY_MANAGE))]
+UsersManagerDep = Annotated[User, Depends(require_permission(Permission.USERS_MANAGE))]
+AuditReaderDep = Annotated[User, Depends(require_permission(Permission.AUDIT_READ))]
 
 
 # --- Catalogue --------------------------------------------------------------------------------
 
 
 def get_catalog_reader(container: ContainerDep, session: SessionDep) -> CatalogReader:
-    return CatalogReader(SqlAlchemyCatalogQueries(session, container.storage))
+    queries = SqlAlchemyCatalogQueries(session, container.storage)
+    return CatalogReader(queries, recommendations=queries)
 
 
 def get_product_commands(session: SessionDep) -> ProductCommands:
@@ -253,6 +296,7 @@ def get_public_homepage(container: ContainerDep, session: SessionDep) -> PublicH
         sections=SqlAlchemyHomepageBuilderRepository(session),
         categories=SqlAlchemyCategoryRepository(session),
         queries=_queries(container, session),
+        recommendations=_queries(container, session),
     )
 
 
@@ -384,8 +428,18 @@ def get_replace_media(container: ContainerDep, session: SessionDep) -> ReplaceMe
     )
 
 
+def get_crop_media(container: ContainerDep, session: SessionDep) -> CropMedia:
+    return CropMedia(
+        storage=container.storage,
+        repository=SqlAlchemyMediaAssetRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+        cropper=container.image_cropper,
+    )
+
+
 UpdateMediaDep = Annotated[UpdateMediaDetails, Depends(get_update_media)]
 ReplaceMediaDep = Annotated[ReplaceMedia, Depends(get_replace_media)]
+CropMediaDep = Annotated[CropMedia, Depends(get_crop_media)]
 
 
 # --- Cart & WhatsApp ordering -----------------------------------------------------------------
@@ -416,3 +470,165 @@ def get_whatsapp_ordering(container: ContainerDep, session: SessionDep) -> Whats
 
 CartServiceDep = Annotated[CartService, Depends(get_cart_service)]
 WhatsAppOrderingDep = Annotated[WhatsAppOrdering, Depends(get_whatsapp_ordering)]
+
+
+# --- Accounts, checkout and orders ------------------------------------------------------------
+
+
+def _notifier(container: Container, session: Session) -> Notifier:
+    return Notifier(mailer=container.mailer, log=SqlAlchemyNotificationLog(session))
+
+
+def get_account_service(container: ContainerDep, session: SessionDep) -> AccountService:
+    settings = container.settings
+    return AccountService(
+        users=SqlAlchemyUserRepository(session),
+        sessions=SqlAlchemySessionRepository(session),
+        resets=SqlAlchemyPasswordResetRepository(session),
+        addresses=SqlAlchemyAddressRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+        hasher=container.password_hasher,
+        rate_limiter=container.rate_limiter,
+        notifier=_notifier(container, session),
+        policy=AccountPolicy(
+            reset_ttl=timedelta(minutes=settings.password_reset_ttl_minutes),
+            storefront_url=settings.storefront_url,
+            store_name=SqlAlchemySettingsRepository(session).get().store_name,
+        ),
+    )
+
+
+def _order_writer(container: Container, session: Session) -> OrderWriter:
+    return OrderWriter(
+        orders=SqlAlchemyOrderRepository(session),
+        products=SqlAlchemyProductRepository(session),
+        carts=SqlAlchemyCartRepository(session),
+        coupons=SqlAlchemyCouponRepository(session),
+        shipping=SqlAlchemyShippingRuleRepository(session),
+        ledger=SqlAlchemyInventoryLedger(session),
+        queries=_queries(container, session),
+        clock=lambda: datetime.now(UTC),
+        collections=SqlAlchemyCollectionAdminRepository(session),
+        settings=SqlAlchemySettingsRepository(session),
+    )
+
+
+def get_checkout_service(
+    container: ContainerDep, session: SessionDep, cart: CartServiceDep
+) -> CheckoutService:
+    return CheckoutService(
+        writer=_order_writer(container, session),
+        cart=cart,
+        carts=SqlAlchemyCartRepository(session),
+        addresses=SqlAlchemyAddressRepository(session),
+        settings=SqlAlchemySettingsRepository(session),
+        order_queries=SqlAlchemyOrderQueries(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+        rate_limiter=container.rate_limiter,
+        notifier=_notifier(container, session),
+        storefront_url=container.settings.storefront_url,
+    )
+
+
+def get_customer_orders(session: SessionDep) -> CustomerOrders:
+    return CustomerOrders(SqlAlchemyOrderQueries(session))
+
+
+def get_order_admin(container: ContainerDep, session: SessionDep) -> OrderAdmin:
+    return OrderAdmin(
+        writer=_order_writer(container, session),
+        queries=SqlAlchemyOrderQueries(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_whatsapp_admin(container: ContainerDep, session: SessionDep) -> WhatsAppAdmin:
+    return WhatsAppAdmin(
+        writer=_order_writer(container, session),
+        requests=SqlAlchemyWhatsAppRequestRepository(session),
+        queries=SqlAlchemyOrderQueries(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+AccountServiceDep = Annotated[AccountService, Depends(get_account_service)]
+CheckoutServiceDep = Annotated[CheckoutService, Depends(get_checkout_service)]
+CustomerOrdersDep = Annotated[CustomerOrders, Depends(get_customer_orders)]
+OrderAdminDep = Annotated[OrderAdmin, Depends(get_order_admin)]
+WhatsAppAdminDep = Annotated[WhatsAppAdmin, Depends(get_whatsapp_admin)]
+
+
+# --- Store operations --------------------------------------------------------------------------
+
+
+def get_notifier(container: ContainerDep, session: SessionDep) -> Notifier:
+    return _notifier(container, session)
+
+
+def get_inventory_service(session: SessionDep) -> InventoryService:
+    return InventoryService(
+        store=SqlAlchemyInventoryStore(session),
+        ledger=SqlAlchemyInventoryLedger(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_coupon_service(session: SessionDep) -> CouponService:
+    return CouponService(
+        coupons=SqlAlchemyCouponRepository(session),
+        products=SqlAlchemyProductRepository(session),
+        categories=SqlAlchemyCategoryRepository(session),
+        collections=SqlAlchemyCollectionAdminRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_after_sale(session: SessionDep) -> AfterSaleService:
+    return AfterSaleService(
+        store=SqlAlchemyOrderRequestStore(session),
+        orders=SqlAlchemyOrderRepository(session),
+        order_queries=SqlAlchemyOrderQueries(session),
+        products=SqlAlchemyProductRepository(session),
+        carts=SqlAlchemyCartRepository(session),
+        ledger=SqlAlchemyInventoryLedger(session),
+        settings=SqlAlchemySettingsRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_review_service(container: ContainerDep, session: SessionDep) -> ReviewService:
+    return ReviewService(
+        store=SqlAlchemyReviewStore(session, container.storage),
+        products=SqlAlchemyProductRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+def get_analytics(session: SessionDep) -> AnalyticsReader:
+    return AnalyticsReader(SqlAlchemyAnalyticsQueries(session))
+
+
+def get_staff_service(session: SessionDep) -> StaffService:
+    return StaffService(
+        store=SqlAlchemyStaffStore(session),
+        sessions=SqlAlchemySessionRepository(session),
+        audit=SqlAlchemyAuditLogRepository(session),
+        uow=SqlAlchemyUnitOfWork(session),
+    )
+
+
+NotifierDep = Annotated[Notifier, Depends(get_notifier)]
+InventoryServiceDep = Annotated[InventoryService, Depends(get_inventory_service)]
+CouponServiceDep = Annotated[CouponService, Depends(get_coupon_service)]
+AfterSaleDep = Annotated[AfterSaleService, Depends(get_after_sale)]
+ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
+AnalyticsDep = Annotated[AnalyticsReader, Depends(get_analytics)]
+StaffServiceDep = Annotated[StaffService, Depends(get_staff_service)]

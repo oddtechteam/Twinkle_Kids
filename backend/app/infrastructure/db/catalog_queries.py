@@ -6,6 +6,7 @@ so listings, detail pages and (later) carts can never disagree.
 
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from uuid import UUID
@@ -21,6 +22,7 @@ from app.application.dto.catalog import (
     CollectionRef,
     CollectionSummary,
     ColourOption,
+    FramedImage,
     ImageView,
     Page,
     PriceView,
@@ -44,6 +46,7 @@ from app.infrastructure.db.models.catalog import (
     ProductModel,
     ProductVariantModel,
 )
+from app.infrastructure.db.models.commerce import OrderItemModel, OrderModel
 from app.infrastructure.db.models.content import (
     CollectionModel,
     CollectionProductModel,
@@ -52,6 +55,8 @@ from app.infrastructure.db.models.content import (
 from app.infrastructure.db.models.identity import UserModel
 from app.infrastructure.db.models.marketing import ReviewModel
 from app.infrastructure.db.models.media import MediaAssetModel
+from app.infrastructure.db.repositories.media import crops_from_json
+from app.infrastructure.db.review_store import review_images
 
 P = ProductModel
 V = ProductVariantModel
@@ -74,8 +79,17 @@ class SqlAlchemyCatalogQueries:
     ) -> ImageView | None:
         if asset is None:
             return None
+        crops: dict[str, FramedImage] = {}
         if asset.visibility == "public":
             url = self._storage.public_url(asset.bucket, asset.object_key)
+            crops = {
+                frame.value: FramedImage(
+                    url=self._storage.public_url(asset.bucket, crop.object_key),
+                    width=crop.width,
+                    height=crop.height,
+                )
+                for frame, crop in crops_from_json(asset.crops).items()
+            }
         else:
             url = self._storage.presigned_url(asset.bucket, asset.object_key, expires_in=900)
         return ImageView(
@@ -85,6 +99,7 @@ class SqlAlchemyCatalogQueries:
             width=asset.width,
             height=asset.height,
             variant_id=variant_id,
+            crops=crops,
         )
 
     @staticmethod
@@ -136,7 +151,9 @@ class SqlAlchemyCatalogQueries:
             published_at=row.published_at,
             badges=list(row.badges or []),
             secondary_image=(
-                self._image(second_media.media_asset, second_media.alt_text, second_media.variant_id)
+                self._image(
+                    second_media.media_asset, second_media.alt_text, second_media.variant_id
+                )
                 if second_media
                 else None
             ),
@@ -262,7 +279,20 @@ class SqlAlchemyCatalogQueries:
         stmt, order_position, from_price = built
 
         newest = (P.published_at.desc().nulls_last(), P.created_at.desc(), P.id)
+        units_sold = (
+            select(func.coalesce(func.sum(OrderItemModel.quantity), 0))
+            .join(OrderModel, OrderModel.id == OrderItemModel.order_id)
+            .where(
+                OrderItemModel.product_id == P.id,
+                OrderModel.status != "cancelled",
+                OrderModel.placed_at >= func.now() - timedelta(days=90),
+            )
+            .correlate(P)
+            .scalar_subquery()
+        )
         match filters.sort:
+            case ProductSort.BESTSELLING:
+                stmt = stmt.order_by(units_sold.desc(), *newest)
             case ProductSort.FEATURED if order_position is not None:
                 stmt = stmt.order_by(order_position.asc().nulls_last(), *newest)
             case ProductSort.PRICE_ASC:
@@ -327,7 +357,7 @@ class SqlAlchemyCatalogQueries:
         seen: set[str] = set()
         colours: list[ColourOption] = []
         for name, hex_value in colour_rows:
-            if name.casefold() not in seen:
+            if name and name.casefold() not in seen:
                 seen.add(name.casefold())
                 colours.append(ColourOption(name=name, hex=hex_value))
 
@@ -487,6 +517,10 @@ class SqlAlchemyCatalogQueries:
             created_at=row.created_at,
             updated_at=row.updated_at,
             badges=list(row.badges or []),
+            is_featured=row.is_featured,
+            related_product_ids=(
+                [UUID(str(v)) for v in (row.related_product_ids or [])] if admin_view else []
+            ),
             size_chart_id=row.size_chart_id,
             collection_ids=(
                 list(
@@ -518,6 +552,55 @@ class SqlAlchemyCatalogQueries:
 
     # --- reviews & sitemap ---------------------------------------------------------------
 
+    # --- recommendations ------------------------------------------------------------------
+
+    def bestseller_ids(
+        self, *, limit: int, days: int = 90, category_slug: str | None = None
+    ) -> list[UUID]:
+        since = datetime.now(UTC) - timedelta(days=days)
+        stmt = (
+            select(OrderItemModel.product_id, func.sum(OrderItemModel.quantity).label("units"))
+            .join(OrderModel, OrderModel.id == OrderItemModel.order_id)
+            .join(P, P.id == OrderItemModel.product_id)
+            .where(
+                OrderModel.status != "cancelled",
+                OrderModel.placed_at >= since,
+                P.status == ProductStatus.ACTIVE.value,
+            )
+            .group_by(OrderItemModel.product_id)
+            .order_by(func.sum(OrderItemModel.quantity).desc(), OrderItemModel.product_id)
+            .limit(limit)
+        )
+        if category_slug:
+            stmt = stmt.where(
+                exists().where(
+                    PC.product_id == OrderItemModel.product_id,
+                    PC.category_id == CategoryModel.id,
+                    CategoryModel.slug == category_slug,
+                )
+            )
+        return [row[0] for row in self._session.execute(stmt) if row[0] is not None]
+
+    def featured_ids(self, *, limit: int) -> list[UUID]:
+        return list(
+            self._session.scalars(
+                select(P.id)
+                .where(P.is_featured.is_(True), P.status == ProductStatus.ACTIVE.value)
+                .order_by(P.published_at.desc().nulls_last(), P.id)
+                .limit(limit)
+            )
+        )
+
+    def related_ids(self, product_id: UUID) -> list[UUID]:
+        raw = self._session.scalar(select(P.related_product_ids).where(P.id == product_id)) or []
+        ids: list[UUID] = []
+        for value in raw:
+            try:
+                ids.append(UUID(str(value)))
+            except ValueError:
+                continue
+        return ids
+
     def product_reviews(self, product_id: UUID, *, limit: int = 20) -> ReviewSummary:
         approved = and_(
             ReviewModel.product_id == product_id,
@@ -533,6 +616,7 @@ class SqlAlchemyCatalogQueries:
             .order_by(ReviewModel.created_at.desc())
             .limit(limit)
         ).all()
+        photos = review_images(self._session, self._storage, [r.id for r, _ in rows])
         return ReviewSummary(
             average=(
                 Decimal(str(average)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
@@ -545,15 +629,17 @@ class SqlAlchemyCatalogQueries:
                     rating=review.rating,
                     title=review.title,
                     body=review.body,
-                    author=(full_name or "").strip().split(" ")[0] or None,
+                    author=review.author_name or (full_name or "").strip().split(" ")[0] or None,
                     created_at=review.created_at,
+                    verified_purchase=review.is_verified_purchase,
+                    images=photos.get(review.id, []),
                 )
                 for review, full_name in rows
             ],
         )
 
     def sitemap(self) -> SitemapView:
-        def entries(stmt: Select[Any]) -> list[SitemapEntry]:
+        def entries(stmt: Select[str, datetime]) -> list[SitemapEntry]:
             return [SitemapEntry(slug=r[0], updated_at=r[1]) for r in self._session.execute(stmt)]
 
         return SitemapView(

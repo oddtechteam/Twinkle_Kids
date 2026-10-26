@@ -1,10 +1,50 @@
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.application.use_cases.media import MediaView
-from app.domain.entities.media import MediaPurpose, MediaVisibility
+from app.domain.entities.media import ImageFrame, MediaPurpose, MediaVisibility
+
+Fraction = Annotated[float, Field(ge=0, le=1)]
+
+
+class CropOut(BaseModel):
+    """A saved crop: the rectangle (fractions of the original) and its rendition."""
+
+    x: float
+    y: float
+    width: float
+    height: float
+    url: str
+    output_width: int
+    output_height: int
+    updated_at: datetime
+
+
+class CropIn(BaseModel):
+    x: Fraction
+    y: Fraction
+    width: Annotated[float, Field(gt=0, le=1)]
+    height: Annotated[float, Field(gt=0, le=1)]
+
+
+def crops_out(view: MediaView) -> dict[ImageFrame, CropOut]:
+    return {
+        frame: CropOut(
+            x=crop.rect.x,
+            y=crop.rect.y,
+            width=crop.rect.width,
+            height=crop.rect.height,
+            url=view.crop_urls[frame],
+            output_width=crop.width,
+            output_height=crop.height,
+            updated_at=crop.updated_at,
+        )
+        for frame, crop in view.asset.crops.items()
+        if frame in view.crop_urls
+    }
 
 
 class MediaAssetOut(BaseModel):
@@ -18,6 +58,7 @@ class MediaAssetOut(BaseModel):
     height: int
     alt_text: str | None
     created_at: datetime
+    crops: dict[ImageFrame, CropOut] = {}
 
     @classmethod
     def from_view(cls, view: MediaView) -> "MediaAssetOut":
@@ -33,6 +74,7 @@ class MediaAssetOut(BaseModel):
             height=a.height,
             alt_text=a.alt_text,
             created_at=a.created_at,
+            crops=crops_out(view),
         )
 
 

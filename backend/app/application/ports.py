@@ -1,6 +1,7 @@
 """Service interfaces the application layer depends on (implemented in infrastructure)."""
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
 
@@ -17,6 +18,14 @@ from app.application.dto.catalog import (
     ReviewSummary,
     SitemapView,
 )
+from app.application.dto.orders import (
+    OrderFilters,
+    OrderSummary,
+    OrderView,
+    WhatsAppRequestSummary,
+    WhatsAppRequestView,
+)
+from app.domain.enums import WhatsAppRequestStatus
 
 
 class PasswordHasher(Protocol):
@@ -25,6 +34,23 @@ class PasswordHasher(Protocol):
     def verify(self, password_hash: str, password: str) -> bool: ...
 
     def needs_rehash(self, password_hash: str) -> bool: ...
+
+
+@dataclass(frozen=True, slots=True)
+class DeliveryReceipt:
+    """What a delivery provider reported. `accepted` only when it confirmed the hand-off."""
+
+    accepted: bool
+    provider: str | None
+    message_id: str | None = None
+    error: str | None = None
+    skipped: bool = False  # channel not configured / development stand-in
+
+
+class Mailer(Protocol):
+    """Transactional email delivery (plain text)."""
+
+    def send(self, *, to: str, subject: str, text: str) -> DeliveryReceipt: ...
 
 
 class RateLimiter(Protocol):
@@ -75,3 +101,42 @@ class CatalogQueries(Protocol):
         ...
 
     def sitemap(self) -> SitemapView: ...
+
+
+class OrderQueries(Protocol):
+    """Read side of orders and WhatsApp requests (customer history and admin screens)."""
+
+    def order(
+        self, *, order_id: UUID | None = None, number: str | None = None
+    ) -> OrderView | None: ...
+
+    def orders(self, filters: OrderFilters) -> Page[OrderSummary]: ...
+
+    def orders_for_user(
+        self, user_id: UUID, *, page: int, page_size: int
+    ) -> Page[OrderSummary]: ...
+
+    def whatsapp_request(self, request_id: UUID) -> WhatsAppRequestView | None: ...
+
+    def whatsapp_requests(
+        self,
+        *,
+        status: WhatsAppRequestStatus | None,
+        search: str | None,
+        page: int,
+        page_size: int,
+    ) -> Page[WhatsAppRequestSummary]: ...
+
+
+class RecommendationQueries(Protocol):
+    def bestseller_ids(
+        self, *, limit: int, days: int = 90, category_slug: str | None = None
+    ) -> list[UUID]:
+        """Active products ranked by units in placed, non-cancelled orders."""
+        ...
+
+    def featured_ids(self, *, limit: int) -> list[UUID]: ...
+
+    def related_ids(self, product_id: UUID) -> list[UUID]:
+        """The admin-curated related products for a product, in order."""
+        ...

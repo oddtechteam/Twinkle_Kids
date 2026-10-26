@@ -13,6 +13,18 @@ import { useMutation, useResource } from "@/lib/admin/hooks";
 import type { WebsitePage } from "@/lib/admin/types";
 import { formatDateTime } from "@/lib/format";
 
+/** Common store pages. Presets only fill the title and URL — the text is always yours to write. */
+const PRESETS = [
+  { title: "About us", slug: "about" },
+  { title: "Contact us", slug: "contact" },
+  { title: "FAQs", slug: "faq" },
+  { title: "Privacy policy", slug: "privacy-policy" },
+  { title: "Terms & conditions", slug: "terms" },
+  { title: "Shipping policy", slug: "shipping-policy" },
+  { title: "Cancellation policy", slug: "cancellation-policy" },
+  { title: "Returns & exchanges", slug: "returns-policy" },
+];
+
 export default function PagesListPage() {
   const router = useRouter();
   const list = useResource(adminApi.pages, "pages");
@@ -60,6 +72,25 @@ export default function PagesListPage() {
       {list.data && <DataTable columns={columns} rows={list.data} rowKey={(p) => p.id} empty={<p className={styles.hint}>No pages yet.</p>} />}
       <Dialog open={creating} onClose={() => setCreating(false)} title="New page">
         <form onSubmit={create} className={styles.stack} noValidate>
+          {list.data && (
+            <div className={styles.chips} role="group" aria-label="Start from a common page">
+              {PRESETS.filter((p) => !list.data?.some((existing) => existing.slug === p.slug)).map((p) => (
+                <button
+                  key={p.slug}
+                  type="button"
+                  className={styles.chip}
+                  aria-pressed={slug === p.slug}
+                  onClick={() => {
+                    setTitle(p.title);
+                    setSlug(p.slug);
+                  }}
+                >
+                  {p.title}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className={styles.hint}>A preset only sets the title and URL. The page starts empty as a draft — add your own wording before publishing.</p>
           <TextInput label="Title" value={title} onChange={setTitle} maxLength={160} required />
           <TextInput label="Slug" hint="Leave empty to generate from the title, e.g. shipping-policy" value={slug} onChange={setSlug} maxLength={160} />
           <Button type="submit" loading={pending} disabled={!title.trim()}>

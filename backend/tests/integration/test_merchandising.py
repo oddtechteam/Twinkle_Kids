@@ -27,6 +27,22 @@ def names(response: Any) -> list[str]:
     return [p["name"] for p in response.json()]
 
 
+def section_picks(c: TestClient, section_id: str, ids: dict[str, str]) -> list[str]:
+    """A manual section's hand-picked order (by product name)."""
+    response = c.get(f"{ADMIN}/homepage/sections/{section_id}")
+    assert response.status_code == 200, response.text
+    by_id = {v: k for k, v in ids.items()}
+    return [by_id[i] for i in response.json()["product_ids"]]
+
+
+def published_section(c: TestClient, section_id: str) -> list[str]:
+    """What the storefront shows for a section after publishing."""
+    assert c.post(f"{ADMIN}/homepage/publish", json={}, headers=csrf(c)).status_code == 200
+    homepage = c.get("/api/v1/content/homepage").json()
+    section = next(s for s in homepage["sections"] if s["id"] == section_id)
+    return [p["name"] for p in section["products"]]
+
+
 def test_category_collection_and_section_orders_are_independent(staff_client: TestClient) -> None:
     c = staff_client
     category_id = c.post(
@@ -42,7 +58,7 @@ def test_category_collection_and_section_orders_are_independent(staff_client: Te
         headers=csrf(c),
     ).json()["id"]
     section_id = c.post(
-        f"{ADMIN}/homepage-sections",
+        f"{ADMIN}/homepage/sections",
         json={
             "section_type": "product_carousel",
             "title": "Bestsellers",
@@ -64,7 +80,7 @@ def test_category_collection_and_section_orders_are_independent(staff_client: Te
         headers=csrf(c),
     )
     c.put(
-        f"{ADMIN}/homepage-sections/{section_id}/products",
+        f"{ADMIN}/homepage/sections/{section_id}/products",
         json={"product_ids": [p["Alpha"], p["Gamma"]]},
         headers=csrf(c),
     )
@@ -78,7 +94,7 @@ def test_category_collection_and_section_orders_are_independent(staff_client: Te
         "Alpha",
         "Beta",
     ]
-    assert names(c.get(f"{ADMIN}/homepage-sections/{section_id}/products")) == ["Alpha", "Gamma"]
+    assert section_picks(c, section_id, p) == ["Alpha", "Gamma"]
     storefront = c.get("/api/v1/products", params={"collection": "festive-edit"}).json()["items"]
     assert [i["name"] for i in storefront] == ["Gamma", "Alpha", "Beta"]
 
@@ -89,7 +105,7 @@ def test_category_collection_and_section_orders_are_independent(staff_client: Te
         headers=csrf(c),
     )
     assert names(c.get(f"{ADMIN}/collections/{collection_id}/products")) == ["Beta"]
-    assert names(c.get(f"{ADMIN}/homepage-sections/{section_id}/products")) == ["Alpha", "Gamma"]
+    assert section_picks(c, section_id, p) == ["Alpha", "Gamma"]
     assert [i["name"] for i in c.get("/api/v1/categories/girls").json()["products"]["items"]] == [
         "Beta",
         "Gamma",
@@ -111,7 +127,7 @@ def test_category_driven_section_follows_category_order(staff_client: TestClient
         headers=csrf(c),
     )
     section_id = c.post(
-        f"{ADMIN}/homepage-sections",
+        f"{ADMIN}/homepage/sections",
         json={
             "section_type": "product_grid",
             "selection_mode": "category",
@@ -120,10 +136,10 @@ def test_category_driven_section_follows_category_order(staff_client: TestClient
         },
         headers=csrf(c),
     ).json()["id"]
-    assert names(c.get(f"{ADMIN}/homepage-sections/{section_id}/products")) == ["Gamma", "Beta"]
+    assert published_section(c, section_id) == ["Gamma", "Beta"]
     # Hand-picking is only allowed in manual mode.
     manual = c.put(
-        f"{ADMIN}/homepage-sections/{section_id}/products",
+        f"{ADMIN}/homepage/sections/{section_id}/products",
         json={"product_ids": [p["Alpha"]]},
         headers=csrf(c),
     )
@@ -150,7 +166,7 @@ def test_ordering_validation(staff_client: TestClient) -> None:
     )
     assert unknown.status_code == 422
     bad_settings = c.post(
-        f"{ADMIN}/homepage-sections",
+        f"{ADMIN}/homepage/sections",
         json={"section_type": "rich_text", "settings": {"body": "Hi", "script": "x"}},
         headers=csrf(c),
     )

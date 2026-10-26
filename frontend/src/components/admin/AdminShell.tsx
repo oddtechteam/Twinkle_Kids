@@ -19,6 +19,15 @@ import {
   Truck,
   Layers,
   type LucideIcon,
+  MessageCircle,
+  Receipt,
+  BarChart3,
+  Boxes,
+  History,
+  Star,
+  TicketPercent,
+  Undo2,
+  Users,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -41,13 +50,25 @@ const NAV: { heading: string; items: NavItem[] }[] = [
     items: [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "admin:access" }],
   },
   {
+    heading: "Sales",
+    items: [
+      { href: "/admin/orders", label: "Orders", icon: Receipt, permission: "orders:manage" },
+      { href: "/admin/whatsapp", label: "WhatsApp requests", icon: MessageCircle, permission: "orders:manage" },
+      { href: "/admin/requests", label: "Cancellations & returns", icon: Undo2, permission: "orders:manage" },
+      { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, permission: "settings:manage" },
+      { href: "/admin/analytics", label: "Analytics", icon: BarChart3, permission: "orders:manage" },
+    ],
+  },
+  {
     heading: "Catalogue",
     items: [
       { href: "/admin/products", label: "Products", icon: Shirt, permission: "catalog:manage" },
       { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "catalog:manage" },
       { href: "/admin/collections", label: "Collections", icon: Layers, permission: "content:manage" },
       { href: "/admin/size-charts", label: "Size charts", icon: Ruler, permission: "catalog:manage" },
+      { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: "inventory:manage" },
       { href: "/admin/media", label: "Media library", icon: ImageIcon, permission: "media:manage" },
+      { href: "/admin/reviews", label: "Reviews", icon: Star, permission: "content:manage" },
     ],
   },
   {
@@ -62,7 +83,9 @@ const NAV: { heading: string; items: NavItem[] }[] = [
     heading: "Store",
     items: [
       { href: "/admin/settings", label: "Settings & theme", icon: Settings, permission: "settings:manage" },
-      { href: "/admin/shipping", label: "Shipping rules", icon: Truck, permission: "settings:manage" },
+      { href: "/admin/shipping", label: "Shipping & order policy", icon: Truck, permission: "settings:manage" },
+      { href: "/admin/staff", label: "Staff & roles", icon: Users, permission: "users:manage" },
+      { href: "/admin/activity", label: "Activity log", icon: History, permission: "audit:read" },
     ],
   },
 ];
