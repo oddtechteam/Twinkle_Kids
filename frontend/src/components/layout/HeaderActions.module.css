@@ -1,8 +1,9 @@
 .actions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-1);
+  gap: 2px;
 }
 
 .action {
@@ -25,15 +26,21 @@
 
 .action:hover {
   background: var(--tk-blush-soft);
+  color: var(--color-accent);
+}
+
+.action:active {
+  transform: scale(0.94);
 }
 
 .search {
   color: var(--color-text-muted);
 }
 
-@media (min-width: 1100px) {
+/* Compact search field: sized so six menu links + icons fit the 1280px container. */
+@media (min-width: 1360px) {
   .search {
-    min-width: 12rem;
+    width: 9.5rem;
     justify-content: flex-start;
     padding: 0 var(--space-4);
     margin-right: var(--space-2);
@@ -53,7 +60,7 @@
   font-weight: var(--weight-medium);
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1360px) {
   .searchLabel {
     display: inline;
   }

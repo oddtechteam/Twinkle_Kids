@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Heart, Menu, ShoppingBag, UserRound } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ChevronRight, Heart, Menu, ShoppingBag, UserRound } from "lucide-react";
+import { type MouseEvent, type ReactNode, Suspense, useState } from "react";
 
 import { Logo } from "@/components/brand/Logo";
 import { Dialog } from "@/components/ui/Dialog";
 import { Motif } from "@/components/ui/Motif";
 import type { LinkItem } from "@/lib/content/types";
 import styles from "./MobileMenu.module.css";
+import { useActiveNav } from "./useActiveNav";
 
 interface MobileMenuProps {
   links: LinkItem[];
@@ -51,15 +52,9 @@ export function MobileMenu({ links, tagline, brandName, children }: MobileMenuPr
           </div>
 
           <nav aria-label="Mobile">
-            <ul className={styles.primary}>
-              {links.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} className={styles.primaryLink}>
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <Suspense fallback={<PrimaryLinks links={links} />}>
+              <ActivePrimaryLinks links={links} />
+            </Suspense>
           </nav>
 
           {children}
@@ -84,5 +79,41 @@ export function MobileMenu({ links, tagline, brandName, children }: MobileMenuPr
         </div>
       </Dialog>
     </>
+  );
+}
+
+/** Drawer links with the current page marked (reads the URL, so it sits under Suspense). */
+function ActivePrimaryLinks({ links }: { links: LinkItem[] }) {
+  const { active, onNavigate } = useActiveNav(links.map((link) => link.href));
+  return <PrimaryLinks links={links} active={active} onNavigate={onNavigate} />;
+}
+
+function PrimaryLinks({
+  links,
+  active = null,
+  onNavigate,
+}: {
+  links: LinkItem[];
+  active?: string | null;
+  onNavigate?: (href: string, event: MouseEvent) => void;
+}) {
+  return (
+    <ul className={styles.primary}>
+      {links.map((link) => (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            className={styles.primaryLink}
+            aria-current={link.href === active ? "page" : undefined}
+            target={link.openInNewTab ? "_blank" : undefined}
+            rel={link.openInNewTab ? "noopener noreferrer" : undefined}
+            onClick={onNavigate ? (event) => onNavigate(link.href, event) : undefined}
+          >
+            {link.label}
+            <ChevronRight aria-hidden="true" size={18} className={styles.chevron} />
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

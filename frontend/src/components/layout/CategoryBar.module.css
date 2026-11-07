@@ -24,6 +24,7 @@
 }
 
 .chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
   min-height: 2.25rem;
@@ -35,16 +36,50 @@
   color: var(--color-text-muted);
   transition:
     background-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-.chip:hover {
+/* Thin rose underline, drawn in for the current page. */
+.chip::after {
+  content: "";
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: 0.3rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--tk-coral);
+  transform: scaleX(0);
+  transition: transform 280ms var(--ease-out);
+}
+
+.chip:hover,
+.chip:focus-visible {
   background: var(--tk-blush-soft);
   color: var(--tk-navy-ink);
 }
 
+.chip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.chip:active {
+  transform: scale(0.96);
+}
+
 .highlight {
   color: var(--color-accent);
+}
+
+.chip[aria-current="page"] {
+  background: var(--tk-blush-soft);
+  color: var(--color-accent);
+}
+
+.chip[aria-current="page"]::after {
+  transform: scaleX(1);
 }
 
 /* ---- Mobile menu list ---- */
@@ -84,4 +119,81 @@
 
 .menuLink:hover {
   background: var(--tk-blush);
+}
+
+/* ---- Desktop collections dropdown ---- */
+
+.dropMenu {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dropTitle {
+  padding-inline: var(--space-3);
+  font-family: var(--font-heading);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-heavy);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--tk-gold-text);
+}
+
+.dropList {
+  display: grid;
+  gap: 2px;
+  list-style: none;
+}
+
+.dropLink {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.dropLink:hover,
+.dropLink:focus-visible {
+  background: var(--tk-blush-soft);
+}
+
+.dropLink:active {
+  background: var(--tk-blush);
+}
+
+.dropName {
+  font-family: var(--font-heading);
+  font-weight: var(--weight-heavy);
+  color: var(--tk-navy-ink);
+}
+
+.dropLink:hover .dropName {
+  color: var(--color-accent);
+}
+
+.dropCaption {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.dropAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-accent);
+}
+
+.dropAll:hover {
+  color: var(--color-accent-hover);
 }

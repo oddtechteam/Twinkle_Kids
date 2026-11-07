@@ -2,10 +2,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { Logo } from "@/components/brand/Logo";
-import type { SiteContent } from "@/lib/content/types";
-import { CategoryBar, CategoryBarFallback, CategoryMenuList } from "./CategoryBar";
+import type { LinkItem, SiteContent } from "@/lib/content/types";
+import { CategoryBar, CategoryBarFallback, CategoryMenuList, CollectionsMenu } from "./CategoryBar";
 import { HeaderActions } from "./HeaderActions";
 import { MobileMenu } from "./MobileMenu";
+import { PrimaryNav } from "./PrimaryNav";
 import styles from "./SiteHeader.module.css";
 
 export function SiteHeader({ content }: { content: SiteContent }) {
@@ -27,15 +28,17 @@ export function SiteHeader({ content }: { content: SiteContent }) {
         </div>
 
         <nav aria-label="Main" className={styles.nav}>
-          <ul className={styles.navList}>
-            {primary.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className={styles.navLink}>
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {/* The active state reads the URL on the client; the plain list is the static shell. */}
+          <Suspense fallback={<StaticNav links={primary} />}>
+            <PrimaryNav
+              links={primary}
+              collectionsMenu={
+                <Suspense fallback={null}>
+                  <CollectionsMenu />
+                </Suspense>
+              }
+            />
+          </Suspense>
         </nav>
 
         <HeaderActions />
@@ -45,5 +48,19 @@ export function SiteHeader({ content }: { content: SiteContent }) {
         <CategoryBar />
       </Suspense>
     </header>
+  );
+}
+
+function StaticNav({ links }: { links: LinkItem[] }) {
+  return (
+    <ul className={styles.navList}>
+      {links.map((link) => (
+        <li key={link.href} className={styles.navItem}>
+          <Link href={link.href} className={styles.navLink}>
+            {link.label}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

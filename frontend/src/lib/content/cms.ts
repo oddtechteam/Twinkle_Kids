@@ -6,6 +6,7 @@
 import type { Category, ProductImage, ProductSort, ProductSummary } from "@/lib/api/types";
 import { type ImageFrame, framedImage } from "@/lib/media/frames";
 import type {
+  CollectionTile,
   HomepageSection,
   IconName,
   LinkItem,
@@ -89,6 +90,18 @@ function media(image: ProductImage | null | undefined, fallbackAlt: string, fram
   if (!image) return null;
   const framed = frame ? framedImage(image, frame) : image;
   return { src: framed.url, alt: image.alt_text ?? fallbackAlt, width: framed.width, height: framed.height };
+}
+
+/** Collection tiles (homepage showcase and the /collections index), cycling brand tones. */
+export function collectionTiles(collections: PublicCollection[]): CollectionTile[] {
+  return collections.map((c, i) => ({
+    title: c.name,
+    caption: c.description ?? undefined,
+    href: `/collections/${c.slug}`,
+    image: media(c.image, c.name, "collection"),
+    theme: THEMES[i % THEMES.length]!,
+    art: ARTS[i % ARTS.length]!,
+  }));
 }
 
 function str(value: unknown): string | undefined {
@@ -191,14 +204,7 @@ export function mapSections(homepage: PublishedHomepage): HomepageSection[] {
           visible: true,
           eyebrow: str(s.eyebrow),
           title: title || "Featured collections",
-          items: section.collections.map((c, i) => ({
-            title: c.name,
-            caption: c.description ?? undefined,
-            href: `/collections/${c.slug}`,
-            image: media(c.image, c.name, "collection"),
-            theme: THEMES[i % THEMES.length]!,
-            art: ARTS[i % ARTS.length]!,
-          })),
+          items: collectionTiles(section.collections),
         });
         break;
       case "occasion_collection":
